@@ -1,0 +1,494 @@
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│                 │     │                 │     │                 │
+│  Client Layer   │────▶│   API Layer     │────▶│  Service Layer  │
+│  (Next.js App)  │     │  (REST/GraphQL) │     │  (Business      │
+│                 │◀────│                 │◀────│   Logic)        │
+└─────────────────┘     └─────────────────┘     └────────┬────────┘
+                                                         │
+                                                         ▼
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│                 │     │                 │     │                 │
+│  External APIs  │◀───▶│  Data Access    │◀───▶│  Database Layer │
+│  (Payment,      │     │  Layer (DAL)    │     │  (MongoDB)      │
+│   Shipping)     │     │                 │     │                 │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+
+{
+  _id: ObjectId,
+  name: String,                    // Product name
+  slug: String,                    // URL-friendly name
+  description: {
+    short: String,                 // Short description for listings
+    long: String                   // Detailed description for product page
+  },
+  category: {
+    _id: ObjectId,                 // Reference to Categories collection
+    name: String                   // Denormalized for quick access
+  },
+  subcategory: String,             // Optional subcategory
+  price: {
+    base: Number,                  // Original price
+    current: Number,               // Price after discount
+    currency: String               // GBP by default
+  },
+  discount: {
+    percentage: Number,            // Discount percentage
+    startDate: Date,               // When discount begins
+    endDate: Date                  // When discount ends
+  },
+  stock: {
+    quantity: Number,              // Available quantity
+    sku: String,                   // Stock keeping unit
+    lowStockThreshold: Number      // Threshold for low stock alerts
+  },
+  images: [{
+    url: String,                   // Image URL
+    alt: String,                   // Alt text for accessibility
+    isPrimary: Boolean             // Is this the main product image?
+  }],
+  attributes: {
+    // Dynamic attributes based on category
+    // For Balloons:
+    occasion: [String],
+    type: String,
+    size: String,
+    color: String,
+    finish: String,
+    // For other categories: their specific attributes
+  },
+  variants: [{                     // For products with multiple options
+    name: String,                  // e.g., "Color", "Size"
+    options: [{
+      value: String,               // e.g., "Red", "Large"
+      additionalPrice: Number,     // Price adjustment for this option
+      stock: Number                // Stock for this specific variant
+    }]
+  }],
+  rating: {
+    average: Number,               // Average rating (1-5)
+    count: Number                  // Number of ratings
+  },
+  reviews: [{                      // Embedded reviews or reference to Reviews collection
+    userId: ObjectId,
+    username: String,
+    rating: Number,
+    comment: String,
+    date: Date,
+    helpful: Number                // Number of users who found this review helpful
+  }],
+  tags: [String],                  // For improved searchability
+  featured: Boolean,               // Is this a featured product?
+  bestSeller: Boolean,             // Is this a best-selling product?
+  newArrival: Boolean,             // Is this a new arrival?
+  seo: {
+    title: String,                 // SEO title
+    description: String,           // SEO description
+    keywords: [String]             // SEO keywords
+  },
+  shipping: {
+    weight: Number,                // Product weight for shipping calculations
+    dimensions: {
+      length: Number,
+      width: Number,
+      height: Number
+    },
+    freeShipping: Boolean          // Is shipping free for this product?
+  },
+  relatedProducts: [ObjectId],     // References to related products
+  createdAt: Date,
+  updatedAt: Date,
+  deletedAt: Date                  // For soft delete functionality
+}
+
+
+
+
+
+
+
+
+{
+  _id: ObjectId,
+  name: String,                    // Category name
+  slug: String,                    // URL-friendly name
+  description: String,             // Category description
+  image: {
+    url: String,                   // Category image URL
+    alt: String                    // Alt text for accessibility
+  },
+  parent: ObjectId,                // Reference to parent category (null for top-level)
+  level: Number,                   // Hierarchy level (0 for top-level)
+  path: [ObjectId],                // Array of ancestor category IDs for easy traversal
+  attributes: [{
+    name: String,                  // Attribute name (e.g., "color")
+    displayName: String,           // Display name (e.g., "Color")
+    type: String,                  // Data type (string, number, boolean)
+    values: [String],              // Possible values
+    filterType: String,            // How to filter (single/multiple)
+    isRequired: Boolean,           // Is this attribute required?
+    isSearchable: Boolean,         // Can users search by this attribute?
+    isFilterable: Boolean          // Can users filter by this attribute?
+  }],
+  order: Number,                   // For custom sorting of categories
+  isActive: Boolean,               // Is this category active?
+  seo: {
+    title: String,                 // SEO title
+    description: String,           // SEO description
+    keywords: [String]             // SEO keywords
+  },
+  createdAt: Date,
+  updatedAt: Date
+}
+
+
+{
+  _id: ObjectId,
+  orderNumber: String,             // Human-readable order number
+  userId: ObjectId,                // Reference to Users collection
+  customerInfo: {
+    name: String,
+    email: String,
+    phone: String
+  },
+  items: [{
+    productId: ObjectId,           // Reference to Products collection
+    name: String,                  // Denormalized product name
+    slug: String,                  // Denormalized product slug
+    image: String,                 // Denormalized product image
+    price: Number,                 // Price at time of purchase
+    originalPrice: Number,         // Original price before discount
+    discount: Number,              // Discount percentage
+    quantity: Number,              // Quantity ordered
+    attributes: Object,            // Selected attributes/options
+    variantId: String              // If applicable
+  }],
+  pricing: {
+    subtotal: Number,              // Sum of item prices
+    discountTotal: Number,         // Total discounts applied
+    shippingCost: Number,          // Shipping cost
+    taxAmount: Number,             // Tax amount
+    totalAmount: Number            // Final order total
+  },
+  shipping: {
+    address: {
+      line1: String,
+      line2: String,
+      city: String,
+      state: String,
+      postalCode: String,
+      country: String
+    },
+    method: String,                // Shipping method selected
+    trackingNumber: String,        // Shipping tracking number
+    estimatedDelivery: Date        // Estimated delivery date
+  },
+  billing: {
+    address: {                     // Can be same as shipping
+      line1: String,
+      line2: String,
+      city: String,
+      state: String,
+      postalCode: String,
+      country: String
+    },
+    paymentMethod: String,         // Payment method used
+    transactionId: String,         // Payment gateway transaction ID
+    paymentStatus: String          // "pending", "paid", "failed", "refunded"
+  },
+  discounts: [{
+    code: String,                  // Coupon/discount code
+    type: String,                  // "percentage", "fixed", "shipping"
+    amount: Number,                // Discount amount
+    description: String            // Description of the discount
+  }],
+  notes: {
+    customer: String,              // Notes from customer
+    internal: String               // Internal notes for staff
+  },
+  status: {
+    current: String,               // "pending", "processing", "shipped", "delivered", "cancelled"
+    history: [{
+      status: String,
+      timestamp: Date,
+      comment: String,
+      staffId: ObjectId            // Who made this status change
+    }]
+  },
+  giftOptions: {
+    isGift: Boolean,
+    message: String,
+    wrapping: Boolean,
+    wrappingCost: Number
+  },
+  createdAt: Date,
+  updatedAt: Date
+}
+
+
+
+
+
+
+
+
+
+
+{
+  _id: ObjectId,
+  email: String,
+  passwordHash: String,
+  salt: String,
+  profile: {
+    firstName: String,
+    lastName: String,
+    displayName: String,
+    avatar: String,
+    phone: String,
+    dateOfBirth: Date,
+    gender: String
+  },
+  addresses: [{
+    type: String,                  // "shipping", "billing", "both"
+    isDefault: Boolean,
+    name: String,                  // Name for this address
+    line1: String,
+    line2: String,
+    city: String,
+    state: String,
+    postalCode: String,
+    country: String,
+    phone: String
+  }],
+  paymentMethods: [{
+    type: String,                  // "card", "paypal", etc.
+    isDefault: Boolean,
+    lastFour: String,              // Last four digits (for cards)
+    expiryMonth: Number,           // Expiry month (for cards)
+    expiryYear: Number,            // Expiry year (for cards)
+    cardType: String,              // Visa, Mastercard, etc.
+    token: String                  // Payment gateway token
+  }],
+  wishlist: [ObjectId],            // References to Products collection
+  recentlyViewed: [{
+    productId: ObjectId,
+    viewedAt: Date
+  }],
+  cart: {
+    items: [{
+      productId: ObjectId,
+      quantity: Number,
+      attributes: Object,          // Selected attributes/options
+      variantId: String,           // If applicable
+      addedAt: Date
+    }],
+    lastUpdated: Date
+  },
+  role: String,                    // "customer", "admin", "staff"
+  permissions: [String],           // Granular permissions
+  preferences: {
+    currency: String,              // Preferred currency
+    language: String,              // Preferred language
+    notifications: {
+      email: Boolean,
+      sms: Boolean,
+      push: Boolean
+    },
+    marketing: {
+      email: Boolean,
+      sms: Boolean
+    }
+  },
+  status: {
+    isActive: Boolean,
+    isVerified: Boolean,
+    isBanned: Boolean,
+    lastLogin: Date
+  },
+  createdAt: Date,
+  updatedAt: Date
+}
+
+
+
+{
+  _id: ObjectId,
+  code: String,                    // Coupon code
+  type: String,                    // "percentage", "fixed", "shipping"
+  value: Number,                   // Discount value
+  minPurchase: Number,             // Minimum purchase amount
+  maxDiscount: Number,             // Maximum discount amount (for percentage)
+  applicableTo: {
+    allProducts: Boolean,
+    categories: [ObjectId],        // Specific categories
+    products: [ObjectId],          // Specific products
+    excludedProducts: [ObjectId]   // Products excluded from coupon
+  },
+  userRestrictions: {
+    isFirstPurchaseOnly: Boolean,
+    specificUsers: [ObjectId],     // Only for these users
+    usageLimit: {
+      perUser: Number,             // Max uses per user
+      total: Number                // Max total uses
+    }
+  },
+  currentUsage: {
+    total: Number,                 // How many times used
+    byUser: [{                     // Usage by specific users
+      userId: ObjectId,
+      count: Number
+    }]
+  },
+  validity: {
+    startDate: Date,
+    endDate: Date,
+    isActive: Boolean
+  },
+  createdAt: Date,
+  updatedAt: Date
+}
+
+
+
+
+
+
+
+
+
+
+### 3. API Endpoints (Detailed)
+
+#### 3.1 Products API
+
+- `GET /api/products`
+
+- Query parameters:
+
+- `category`: Filter by category
+- `subcategory`: Filter by subcategory
+- `price_min`, `price_max`: Price range
+- `discount`: Filter by discount (yes/no)
+- `rating`: Filter by minimum rating
+- `sort`: Sort by (price_asc, price_desc, rating, popularity)
+- `page`, `limit`: Pagination
+- Dynamic attribute filters based on category
+
+
+
+- Response: Paginated list of products with metadata
+
+
+
+- `GET /api/products/:id`
+
+- Response: Detailed product information
+- Includes: variants, reviews, related products
+
+
+
+- `GET /api/products/category/:categorySlug`
+
+- Query parameters: Same as `/api/products`
+- Response: Products in the specified category
+
+
+
+- `GET /api/products/search`
+
+- Query parameters:
+
+- `q`: Search query
+- Other filters same as `/api/products`
+
+
+
+- Response: Search results with relevance scoring
+
+
+
+- `POST /api/products` (Admin)
+
+- Request body: Product data
+- Response: Created product
+
+
+
+- `PUT /api/products/:id` (Admin)
+
+- Request body: Updated product data
+- Response: Updated product
+
+
+
+- `DELETE /api/products/:id` (Admin)
+
+- Response: Deletion confirmation
+
+
+
+
+
+#### 3.2 Categories API
+
+- `GET /api/categories`
+
+- Query parameters:
+
+- `parent`: Filter by parent category
+- `level`: Filter by hierarchy level
+- `includeAttributes`: Include attribute definitions
+
+
+
+- Response: List of categories
+
+
+
+- `GET /api/categories/:id`
+
+- Query parameters:
+
+- `includeProducts`: Include sample products
+- `includeChildren`: Include child categories
+
+
+
+- Response: Category details with attributes
+
+
+
+- `GET /api/categories/tree`
+
+- Response: Hierarchical category tree
+
+
+
+- `POST /api/categories` (Admin)
+
+- Request body: Category data
+- Response: Created category
+
+
+
+- `PUT /api/categories/:id` (Admin)
+
+- Request body: Updated category data
+- Response: Updated category
+
+
+
+- `DELETE /api/categories/:id` (Admin)
+
+- Response: Deletion confirmation
+
+
+
+
+
+#### 3.3 Orders API
+
+- `GET /api/orders` (User)
+
+- Query parameters:
+
+- `status`: Filter by order status
