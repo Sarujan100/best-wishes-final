@@ -25,8 +25,6 @@ import { toast, Toaster } from 'sonner';
 import { FiShoppingBag } from 'react-icons/fi'
 import { FaUserCircle } from 'react-icons/fa'
 
-const images = ["/1.jpg", "/2.jpg", "/3.jpg"]
-
 export default function FancyCarousel() {
   const { allProducts } = useSelector((state) => state.productsState)
   const { categories } = useSelector((state) => state.categoriesState)
@@ -35,6 +33,7 @@ export default function FancyCarousel() {
     
   const [loading, setLoading] = useState(true);
   const [localCategories, setLocalCategories] = useState([]);
+  const [heroSections, setHeroSections] = useState([]);
   const router = useRouter();
 
 
@@ -92,7 +91,35 @@ export default function FancyCarousel() {
         setLocalCategories([]);
       }
     };
+
+    // Fetch hero sections from backend
+    const fetchHeroSections = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/hero-sections/active");
+        const data = await res.json();
+        if (data.success && data.data) {
+          setHeroSections(data.data);
+        } else {
+          // Fallback to static images if no hero sections
+          setHeroSections([
+            { image: "/1.jpg", title: "Welcome", description: "Slide 1" },
+            { image: "/2.jpg", title: "Explore", description: "Slide 2" },
+            { image: "/3.jpg", title: "Discover", description: "Slide 3" }
+          ]);
+        }
+      } catch (err) {
+        console.error("Error fetching hero sections:", err);
+        // Fallback to static images
+        setHeroSections([
+          { image: "/1.jpg", title: "Welcome", description: "Slide 1" },
+          { image: "/2.jpg", title: "Explore", description: "Slide 2" },
+          { image: "/3.jpg", title: "Discover", description: "Slide 3" }
+        ]);
+      }
+    };
+
     fetchCategories();
+    fetchHeroSections();
   }, [dispatch])
 
   // Helper function to get product image
@@ -194,15 +221,30 @@ export default function FancyCarousel() {
         {/* Hero Carousel */}
         <div className="w-full h-[300px] sm:h-[400px] lg:h-[500px] relative rounded-xl overflow-hidden shadow-lg">
           <Slider {...settings}>
-            {images.map((src, index) => (
-              <div key={index} className="relative w-full h-[300px] sm:h-[400px] lg:h-[500px]">
+            {heroSections.map((heroSection, index) => (
+              <div key={heroSection._id || index} className="relative w-full h-[300px] sm:h-[400px] lg:h-[500px]">
                 <Image
-                  src={src || "/placeholder.svg"}
-                  alt={`Slide ${index}`}
+                  src={heroSection.image || "/placeholder.svg"}
+                  alt={heroSection.title || `Slide ${index + 1}`}
                   fill
                   className="object-cover"
                   priority={index === 0}
                 />
+                {/* Optional: Add overlay with title and description */}
+                {(heroSection.title || heroSection.description) && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6">
+                    {heroSection.title && (
+                      <h2 className="text-white text-xl sm:text-2xl lg:text-3xl font-bold mb-2">
+                        {heroSection.title}
+                      </h2>
+                    )}
+                    {heroSection.description && (
+                      <p className="text-white/90 text-sm sm:text-base">
+                        {heroSection.description}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </Slider>
