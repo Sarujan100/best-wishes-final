@@ -23,8 +23,6 @@ import { addToCart } from "./slices/cartSlice";
 import { addToWishlist } from "./slices/wishlistSlice";
 import { toast, Toaster } from 'sonner';
 
-const images = ["/1.jpg", "/2.jpg", "/3.jpg"]
-
 export default function FancyCarousel() {
   const { allProducts } = useSelector((state) => state.productsState)
   const { categories } = useSelector((state) => state.categoriesState)
@@ -33,6 +31,7 @@ export default function FancyCarousel() {
     
   const [loading, setLoading] = useState(true);
   const [localCategories, setLocalCategories] = useState([]);
+  const [heroSections, setHeroSections] = useState([]);
   const router = useRouter();
 
   // Event data for Upcoming Events section
@@ -77,6 +76,32 @@ export default function FancyCarousel() {
     dispatch(getCategories())
     console.log("checking", allProducts)
 
+    // Fetch hero sections from backend
+    const fetchHeroSections = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/hero-sections/active');
+        const data = await response.json();
+        if (data.success && data.data) {
+          setHeroSections(data.data);
+        } else {
+          // Fallback to static images if no hero sections found
+          setHeroSections([
+            { image: "/1.jpg", title: "Welcome to Best Wishes", description: "Find the perfect gifts for your loved ones" },
+            { image: "/2.jpg", title: "Special Occasions", description: "Make every moment memorable" },
+            { image: "/3.jpg", title: "Custom Gifts", description: "Personalized gifts for everyone" }
+          ]);
+        }
+      } catch (error) {
+        console.error('Error fetching hero sections:', error);
+        // Fallback to static images
+        setHeroSections([
+          { image: "/1.jpg", title: "Welcome to Best Wishes", description: "Find the perfect gifts for your loved ones" },
+          { image: "/2.jpg", title: "Special Occasions", description: "Make every moment memorable" },
+          { image: "/3.jpg", title: "Custom Gifts", description: "Personalized gifts for everyone" }
+        ]);
+      }
+    };
+
     // Fetch categories from backend
     const fetchCategories = async () => {
       try {
@@ -89,6 +114,8 @@ export default function FancyCarousel() {
         setLocalCategories([]);
       }
     };
+
+    fetchHeroSections();
     fetchCategories();
   }, [dispatch])
 
@@ -191,15 +218,29 @@ export default function FancyCarousel() {
         {/* Hero Carousel */}
         <div className="w-full h-[300px] sm:h-[400px] lg:h-[500px] relative rounded-xl overflow-hidden shadow-lg">
           <Slider {...settings}>
-            {images.map((src, index) => (
-              <div key={index} className="relative w-full h-[300px] sm:h-[400px] lg:h-[500px]">
+            {heroSections.map((heroSection, index) => (
+              <div key={heroSection._id || index} className="relative w-full h-[300px] sm:h-[400px] lg:h-[500px]">
                 <Image
-                  src={src || "/placeholder.svg"}
-                  alt={`Slide ${index}`}
+                  src={heroSection.image || "/placeholder.svg"}
+                  alt={heroSection.title || `Slide ${index + 1}`}
                   fill
                   className="object-cover"
                   priority={index === 0}
                 />
+                {heroSection.title && (
+                  <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+                    <div className="text-center text-white p-6">
+                      <h1 className="text-2xl sm:text-4xl lg:text-5xl font-bold mb-4">
+                        {heroSection.title}
+                      </h1>
+                      {heroSection.description && (
+                        <p className="text-lg sm:text-xl lg:text-2xl opacity-90">
+                          {heroSection.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </Slider>
