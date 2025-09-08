@@ -1,22 +1,21 @@
 "use client";
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import Navbar from '../components/navBar/page'
 import Image from 'next/image';
 import { RiDeleteBin6Line } from "react-icons/ri";
-import { AiOutlineEdit } from "react-icons/ai";
-import { FaCcVisa, FaCcPaypal } from "react-icons/fa";
-import { SiMastercard } from "react-icons/si";
 import Footer from '../components/footer/page'
-import SurpriseGift from '../modal/surpriseGift/page'
+import SurpriseGiftModal from '../modal/surpriseGift/page'
 import { useSelector } from 'react-redux';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 function page() {
     const { user } = useSelector((state) => state.userState);
-    const [showModal, setShowModal] = useState(false);
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [submitting, setSubmitting] = useState(false);
-    const closeModal = () => setShowModal(false);
+    const [showConfirm, setShowConfirm] = useState(false);
 
     // Form state
     const [recipientName, setRecipientName] = useState('');
@@ -24,15 +23,60 @@ function page() {
     const [shippingAddress, setShippingAddress] = useState('');
     const [costume, setCostume] = useState('none');
     const [suggestions, setSuggestions] = useState('');
-    const [quantity1, setQuantity1] = useState(1);
-    const [quantity2, setQuantity2] = useState(1);
 
-    const price1 = 25.0;
-    const price2 = 25.25;
+    // Selected product state
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [quantity, setQuantity] = useState(1);
     const shippingFee = 8;
-    const total = (price1 * quantity1) + (price2 * quantity2) + shippingFee;
 
-    const saveApplyHandler = async () => {
+    const price = useMemo(() => {
+        if (!selectedProduct) return 0;
+        const sp = selectedProduct.salePrice;
+        const rp = selectedProduct.retailPrice;
+        const p = selectedProduct.price;
+        return typeof sp === 'number' && sp > 0 ? sp : (typeof rp === 'number' && rp > 0 ? rp : (typeof p === 'number' ? p : 0));
+    }, [selectedProduct]);
+
+    const total = useMemo(() => ((price * quantity) + (selectedProduct ? shippingFee : 0)), [price, quantity, selectedProduct]);
+
+    // Fetch product if productId passed in query
+    useEffect(() => {
+        const productId = searchParams.get('productId') || searchParams.get('id');
+        const qParam = Number(searchParams.get('qty'));
+        if (qParam && qParam > 0) setQuantity(qParam);
+        if (!productId) return;
+        let ignore = false;
+        (async () => {
+            try {
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products/${productId}`);
+                const data = response.data?.data || response.data;
+                if (!ignore && data) {
+                    setSelectedProduct(data);
+                }
+            } catch (error) {
+                toast.error('Failed to load product for surprise gift');
+            }
+        })();
+        return () => { ignore = true; };
+    }, [searchParams]);
+
+    const getProductImage = () => {
+        if (!selectedProduct?.images || selectedProduct.images.length === 0) return '/placeholder.svg';
+        const first = selectedProduct.images[0];
+        if (typeof first === 'object' && first?.url) return first.url;
+        return first;
+    };
+
+    const handleRemoveProduct = () => {
+        setSelectedProduct(null);
+        setQuantity(1);
+    };
+
+    const goToProduct = () => {
+        if (selectedProduct?._id) router.push(`/productDetail/${selectedProduct._id}`);
+    };
+
+    const submitToServer = async () => {
         if (!user) {
             toast.error('Please login to continue');
             return;
@@ -41,9 +85,18 @@ function page() {
             toast.error('Please fill required fields');
             return;
         }
+        if (!selectedProduct) {
+            toast.error('Please select a product to surprise');
+            return;
+        }
         const items = [
-            { productId: 'placeholder-product-1', name: 'Gift Mug', price: price1, quantity: quantity1, image: '/mug.jpg' },
-            { productId: 'placeholder-product-2', name: 'Gift Mug 2', price: price2, quantity: quantity2, image: '/mug.jpg' },
+            {
+                productId: selectedProduct._id,
+                name: selectedProduct.name,
+                price: price,
+                quantity: quantity,
+                image: getProductImage(),
+            }
         ];
         try {
             setSubmitting(true);
@@ -56,14 +109,26 @@ function page() {
                 items,
                 total,
             }, { withCredentials: true });
-            toast.success('Surprise gift request submitted');
-            setShowModal(true);
+            toast.success('Successfully applied. Wait for the confirmation.');
+            router.push('/user/profile');
         } catch (e) {
             toast.error(e.response?.data?.message || 'Failed to save');
         } finally {
             setSubmitting(false);
         }
     }
+
+    const saveApplyHandler = () => {
+        if (!selectedProduct) {
+            toast.error('Please select a product to surprise');
+            return;
+        }
+        if (!recipientName || !recipientPhone || !shippingAddress) {
+            toast.error('Please fill recipient name, phone, and shipping address');
+            return;
+        }
+        setShowConfirm(true);
+    };
     return (
         <>
             <div className='px-4 md:pl-[80px] md:pr-[80px] flex-col items-center'>
@@ -71,71 +136,45 @@ function page() {
                 <div className='flex w-full mt-[15px] flex-col md:flex-row'>
                     <div className='flex-col md:w-[65%] w-full items-center md:pr-[20px]'>
                         <div className='w-full border-1 border-[#822BE2] rounded-[5px] p-[10px] mb-[20px] flex items-center justify-center text-[18px] font-semibold text-[#822BE2]'>Surprise Gift Delivery</div>
-                        {/* left side */}
-                        <div className='w-full  flex justify-center mb-[30px] md:mb-[50px]'>
-                            <div className="relative w-[35%] md:w-[15%] ">
-                                <Image
-                                    src="/mug.jpg"
-                                    alt="image"
-                                    width={130}
-                                    height={120}
-                                    className="rounded-lg object-cover"
-                                />
-                            </div>
-                            <div className='w-[65%] md:w-[40%]  flex-col pl-[20px]'>
-                                <p className='font-large'>Product name</p>
-                                <p className='font-large font-semibold'>Product Price</p>
-                                <div>stars</div>
-                            </div>
-                            <div className='hidden md:block bg-[#D9D9D9] mr-[20px] w-[3px] rounded-full'></div>
-                            <div className='w-[45%] flex-col hidden md:block'>
-                                <div className=' flex items-center space-x-[15px]'>
-                                    <p>Quantity</p>
-                                    <div className='flex justify-center items-center space-x-[10px]'>
-                                        <button onClick={() => setQuantity1(q => Math.max(1, q - 1))} className='bg-[#D9D9D9] w-[25px] h-[25px] rounded-[5px] flex justify-center items-center'>-</button>
-                                        <span className='bg-white border-2 border-[#D9D9D9] w-[45px] h-[45px] rounded-[5px] flex justify-center items-center font-large'>{quantity1}</span>
-                                        <button onClick={() => setQuantity1(q => q + 1)} className='bg-[#D9D9D9] w-[25px] h-[25px] rounded-[5px] flex justify-center items-center'>+</button>
+                        {/* Selected product */}
+                        {selectedProduct ? (
+                            <div className='w-full flex justify-between items-center mb-[30px] md:mb-[50px] gap-4'>
+                                <div className="relative w-[30%] md:w-[20%] cursor-pointer" onClick={goToProduct}>
+                                    <Image
+                                        src={getProductImage()}
+                                        alt={selectedProduct?.name || 'image'}
+                                        width={200}
+                                        height={180}
+                                        className="rounded-lg object-cover w-full h-auto"
+                                    />
+                                </div>
+                                <div className='flex-1 flex-col pl-[10px]'>
+                                    <p className='font-large line-clamp-2'>{selectedProduct?.name}</p>
+                                    <p className='font-large font-semibold'>US ${price.toFixed(2)}</p>
+                                </div>
+                                <div className='flex flex-col items-end gap-3'>
+                                    <div className='flex items-center gap-3'>
+                                        <span>Qty</span>
+                                        <div className='flex justify-center items-center gap-2'>
+                                            <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className='bg-[#D9D9D9] w-[28px] h-[28px] rounded-[5px] flex justify-center items-center'>-</button>
+                                            <span className='bg-white border-2 border-[#D9D9D9] w-[48px] h-[40px] rounded-[5px] flex justify-center items-center font-large'>{quantity}</span>
+                                            <button onClick={() => setQuantity(q => q + 1)} className='bg-[#D9D9D9] w-[28px] h-[28px] rounded-[5px] flex justify-center items-center'>+</button>
+                                        </div>
+                                        <button onClick={handleRemoveProduct} className='border-2 border-red-500 rounded-full p-[6px]'>
+                                            <RiDeleteBin6Line className='text-red-500' />
+                                        </button>
                                     </div>
-                                    <button className='border-2 border-red-500 rounded-full p-[5px] ml-[50px]'><RiDeleteBin6Line className='text-red-500' /></button>
-                                </div>
-                                <div className='flex space-x-[40px] pt-[20px]'>
-                                    <span>Price</span> <span className='font-large font-semibold'>US {(price1 * quantity1).toFixed(2)}$</span>
-                                </div>
-                            </div>
-                        </div>
-                        {/* ------------- */}
-                        <div className='w-full  flex justify-center'>
-                            <div className="relative w-[35%] md:w-[15%] ">
-                                <Image
-                                    src="/mug.jpg"
-                                    alt="image"
-                                    width={130}
-                                    height={120}
-                                    className="rounded-lg object-cover"
-                                />
-                            </div>
-                            <div className='w-[65%] md:w-[40%]  flex-col pl-[20px]'>
-                                <p className='font-large'>Product name</p>
-                                <p className='font-large font-semibold'>Product Price</p>
-                                <div>stars</div>
-                            </div>
-                            <div className='hidden md:block bg-[#D9D9D9] mr-[20px] w-[3px] rounded-full'></div>
-                            <div className='w-[45%] flex-col hidden md:block'>
-                                <div className=' flex items-center space-x-[15px]'>
-                                    <p>Quantity</p>
-                                    <div className='flex justify-center items-center space-x-[10px]'>
-                                        <button onClick={() => setQuantity2(q => Math.max(1, q - 1))} className='bg-[#D9D9D9] w-[25px] h-[25px] rounded-[5px] flex justify-center items-center'>-</button>
-                                        <span className='bg-white border-2 border-[#D9D9D9] w-[45px] h-[45px] rounded-[5px] flex justify-center items-center font-large'>{quantity2}</span>
-                                        <button onClick={() => setQuantity2(q => q + 1)} className='bg-[#D9D9D9] w-[25px] h-[25px] rounded-[5px] flex justify-center items-center'>+</button>
+                                    <div className='text-right'>
+                                        <span className='text-sm text-gray-700'>Subtotal:&nbsp;</span>
+                                        <span className='font-semibold'>US ${(price * quantity).toFixed(2)}</span>
                                     </div>
-                                    <button className='border-2 border-red-500 rounded-full p-[5px] ml-[50px]'><RiDeleteBin6Line className='text-red-500' /></button>
-                                </div>
-                                <div className='flex space-x-[40px] pt-[20px]'>
-                                    <span>Price</span> <span className='font-large font-semibold'>US {(price2 * quantity2).toFixed(2)}$</span>
                                 </div>
                             </div>
-                        </div>
-                        {/* ------------- */}
+                        ) : (
+                            <div className='w-full flex justify-center items-center text-gray-500 mb-[30px] md:mb-[50px]'>
+                                No product selected. Go to a product and click Apply.
+                            </div>
+                        )}
                     </div>
 
 
@@ -211,12 +250,19 @@ function page() {
                     </div>
                 </div>
             </div>
-            {showModal && (
-                <SurpriseGift onClose={closeModal}>
-                    
-                </SurpriseGift>
+            {/* Confirmation Modal */}
+            {showConfirm && (
+                <SurpriseGiftModal
+                    onClose={() => setShowConfirm(false)}
+                    onConfirm={submitToServer}
+                    itemsCount={selectedProduct ? 1 : 0}
+                    deliveryFee={selectedProduct ? shippingFee : 0}
+                    discounts={0}
+                    estimateTotal={total}
+                    confirmLoading={submitting}
+                />
             )}
-            
+       
             <Footer />
         </>
 
