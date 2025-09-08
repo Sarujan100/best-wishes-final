@@ -15,6 +15,7 @@ const sendEmailRoutes = require('./routes/sendMailRotes');
 const giftContributionRoutes = require('./routes/giftContributionRoutes');
 const surpriseGiftRoutes = require('./routes/surpriseGiftRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const heroSectionRoutes = require('./routes/heroSectionRoutes');
 
 
 const app = express();
@@ -29,7 +30,7 @@ if (process.env.FRONT_URL) {
 app.use(cors({
   origin: allowedOrigins,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
 }));
 app.use(express.json());
@@ -47,6 +48,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/Email', sendEmailRoutes);
 app.use('/api/gift', giftContributionRoutes);
 app.use('/api/surprise', surpriseGiftRoutes);
+app.use('/api', heroSectionRoutes);
 
 
 module.exports = app;
