@@ -22,6 +22,8 @@ import Loader from "./components/loader/page"
 import { addToCart } from "./slices/cartSlice";
 import { addToWishlist } from "./slices/wishlistSlice";
 import { toast, Toaster } from 'sonner';
+import { FiShoppingBag } from 'react-icons/fi'
+import { FaUserCircle } from 'react-icons/fa'
 
 export default function FancyCarousel() {
   const { allProducts } = useSelector((state) => state.productsState)
@@ -678,6 +680,26 @@ export default function FancyCarousel() {
       `}</style>
 
       <Toaster position="top-center" richColors closeButton />
+
+           {/* Floating Actions */}
+           <div className='fixed right-4 bottom-4 z-40 flex flex-col items-end gap-3'>
+           <button
+                    onClick={() => router.push('/user/profile')}
+                    aria-label='Go to profile'
+                    className='w-12 h-12 rounded-full shadow-md bg-white hover:bg-gray-50 flex items-center justify-center border border-gray-200'
+                >
+                    <FaUserCircle className='text-[24px] text-[#822BE2]' />
+                </button>
+                <button
+                    onClick={() => router.push('/allProducts')}
+                    aria-label='Go to shopping'
+                    className='flex items-center gap-2 px-4 py-3 rounded-full shadow-md bg-[#822BE2] hover:bg-purple-700 text-white'
+                >
+                    <FiShoppingBag className='text-[18px]' />
+                    <span className='hidden sm:inline'>Go to shopping</span>
+                </button>
+               
+            </div>
     </div>
   )
 }

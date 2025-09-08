@@ -1,9 +1,10 @@
 "use client";
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { IoIosCloseCircleOutline } from "react-icons/io";
 
-const SurpriseGift = ({ onClose, children }) => {
+const SurpriseGift = ({ onClose, onConfirm, itemsCount = 1, deliveryFee = 0, discounts = 0, estimateTotal = 0, confirmLoading = false }) => {
   const modalRef = useRef(null);
+  const [acknowledged, setAcknowledged] = useState(false);
 
   const handleOverlayClick = (e) => {
     if (modalRef.current && !modalRef.current.contains(e.target)) {
@@ -14,40 +15,51 @@ const SurpriseGift = ({ onClose, children }) => {
   return (
     <div style={styles.overlay} onClick={handleOverlayClick}>
       <div style={styles.modal} ref={modalRef}>
-        {children}
-        <div className='flex-col border-1 border-[#D9D9D9] p-[20px] rounded-[10px] space-y-[15px]'>
-          <div className='flex justify-between items-center text-[16px]'>
-            <p className='text-[18px] font-semibold '>Checkout</p>
-            {/* <IoIosCloseCircleOutline  className='text-[30px]'/> */}
+        <div className='flex-col p-[24px] rounded-[12px] space-y-[16px]'>
+          <div className='flex items-start justify-between'>
+            <div>
+              <p className='text-[18px] font-semibold text-[#111827]'>Confirm Surprise Gift Application</p>
+              <p className='text-[13px] text-[#6B7280] mt-[2px]'>Please review the steps before applying</p>
+            </div>
+            <button onClick={onClose} className='text-[#6B7280] hover:text-black'>
+              <IoIosCloseCircleOutline className='text-[26px]' />
+            </button>
           </div>
-          <div className='flex justify-between items-center text-[16px]'>
-            <p className='text-[#5C5C5C]'>Total items</p>
-            <p className='text-[#333333] font-semibold'>2</p>
+          <div className='rounded-[10px] bg-[#F9FAFB] p-[14px] text-[14px] text-[#374151] space-y-[6px] border border-[#E5E7EB]'>
+            <p className='font-semibold'>How it works</p>
+            <ul className='list-disc pl-[18px] space-y-[2px]'>
+              <li>You apply with your details.</li>
+              <li>Our admin team reviews and confirms your request.</li>
+              <li>After confirmation, you will proceed with payment and we handle the rest.</li>
+            </ul>
           </div>
-          <div className='flex justify-between items-center text-[16px]'>
-            <p className='text-[#5C5C5C]'>Delivery Charge Fees</p>
-            <p className='text-[#333333] font-semibold'>US 8$</p>
+          <div className='grid grid-cols-2 gap-[12px] text-[14px]'>
+            <div className='flex justify-between items-center bg-[#FCFCFD] border border-[#F3F4F6] rounded-[8px] px-[10px] py-[8px]'>
+              <p className='text-[#6B7280]'>Total items</p>
+              <p className='text-[#111827] font-semibold'>{itemsCount}</p>
+            </div>
+            <div className='flex justify-between items-center bg-[#FCFCFD] border border-[#F3F4F6] rounded-[8px] px-[10px] py-[8px]'>
+              <p className='text-[#6B7280]'>Delivery Fee</p>
+              <p className='text-[#111827] font-semibold'>US {Number(deliveryFee).toFixed(2)}$</p>
+            </div>
+            <div className='flex justify-between items-center bg-[#FCFCFD] border border-[#F3F4F6] rounded-[8px] px-[10px] py-[8px]'>
+              <p className='text-[#6B7280]'>Discounts</p>
+              <p className='text-green-600 font-semibold'>US {Number(discounts).toFixed(2)}$</p>
+            </div>
+            <div className='flex justify-between items-center bg-[#FCFCFD] border border-[#F3F4F6] rounded-[8px] px-[10px] py-[8px]'>
+              <p className='text-[#6B7280]'>Estimate Total</p>
+              <p className='text-[#111827] font-semibold'>US {Number(estimateTotal).toFixed(2)}$</p>
+            </div>
           </div>
-          <div className='flex justify-between items-center text-[16px]'>
-            <p className='text-[#5C5C5C]'>Discounts</p>
-            <p className='text-green-500 font-semibold'>US 0$</p>
+          <div className='flex items-start text-[14px] gap-[10px]'>
+            <input id='ack' type='checkbox' className='mt-[2px] w-[18px] h-[18px] rounded-[3px] border border-[#D1D5DB]' checked={acknowledged} onChange={(e) => setAcknowledged(e.target.checked)} />
+            <label htmlFor='ack' className='text-[#111827] font-semibold'>I have read and understood the steps above.</label>
           </div>
-          <div className='flex justify-between items-center text-[16px]'>
-            <p className='text-[#5C5C5C]'>Estimte Total</p>
-            <p className='text-[#333333] font-semibold'>US 56.05$</p>
-          </div>
-          <hr className='text-[#D9D9D9]' />
-          <div className='flex justify-center items-center text-[14px]'>
-            This payment must be pay for initially and if any case your payment will be fully refundable
-            This request will be Informed with Mail & Notification or if need any clarification Our team will be contact you.
-          </div>
-          <div className='flex  items-center text-[14px] gap-[10px]'>
-            <input type='checkbox' className='w-[20px] h-[20px] rounded-[3px]' />
-            <p className='font-semibold'>I read & understood</p>
-          </div>
-          <div className='w-full flex gap-[8px]'>
-            <button onClick={onClose} className='h-[50px] w-[30%] text-[18px] border-2 border-[#822BE2] text-[#822BE2] font-semibold rounded-[8px] hover:cursor-pointer bg-white hover:bg-purple-200 mt-[20px]'>Cancel</button>
-            <button className='h-[50px] w-[70%] text-[18px] text-white font-semibold rounded-[8px] hover:cursor-pointer bg-[#822BE2] hover:bg-purple-600 mt-[20px]'>Confirm Order</button>
+          <div className='w-full flex gap-[10px] pt-[4px]'>
+            <button onClick={onClose} className='h-[44px] w-[35%] text-[16px] border-2 border-[#822BE2] text-[#822BE2] font-semibold rounded-[8px] hover:cursor-pointer bg-white hover:bg-purple-50'>Cancel</button>
+            <button disabled={!acknowledged || confirmLoading} onClick={onConfirm} className={`h-[44px] w-[65%] text-[16px] text-white font-semibold rounded-[8px] hover:cursor-pointer ${(!acknowledged || confirmLoading) ? 'bg-purple-400 cursor-not-allowed' : 'bg-[#822BE2] hover:bg-purple-600'}`}>
+              {confirmLoading ? 'Applying...' : 'Confirm & Apply'}
+            </button>
           </div>
         </div>
       </div>
@@ -68,9 +80,10 @@ const styles = {
   },
   modal: {
     backgroundColor: '#fff',
-    padding: '30px',
-    borderRadius: '10px',
-    width: '40%',
+    padding: '20px',
+    borderRadius: '12px',
+    width: '92%',
+    maxWidth: '560px',
     // textAlign: 'center',
     position: 'relative',
   }
