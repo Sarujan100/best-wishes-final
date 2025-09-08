@@ -57,6 +57,7 @@ function PaymentForm({ clientSecret, amount, currency, lineItems, onSuccess }) {
             setIsLoading(false);
         }
     };
+    console.log("Amount:", amount);
 
     return (
         <form onSubmit={handleSubmit} className="w-full space-y-4">
@@ -88,7 +89,7 @@ export default function CartPaymentPage() {
         }
     }, [user, router]);
 
-    const { amount, currency, shipping, lineItems } = useMemo(() => {
+    const { amount, currency, shipping, lineItems, topItem } = useMemo(() => {
         const currency = 'usd';
         const shippingCost = cart.length > 0 ? 10 : 0;
         const items = cart.map((i) => {
@@ -103,11 +104,13 @@ export default function CartPaymentPage() {
             };
         });
         const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+        const topItem = items.length > 0 ? items.reduce((max, i) => (max && (max.price * max.quantity) > (i.price * i.quantity) ? max : i), items[0]) : null;
         return {
             amount: subtotal + shippingCost,
             currency,
             shipping: shippingCost,
             lineItems: items,
+            topItem,
         };
     }, [cart]);
 
@@ -176,6 +179,27 @@ export default function CartPaymentPage() {
                             <div className='flex justify-between mt-1'>
                                 <span className='text-sm text-[#5C5C5C]'>Total</span>
                                 <span className='font-semibold'>US ${amount.toFixed(2)}</span>
+                            </div>
+                            <div className='mt-4 flex flex-col sm:flex-row gap-3'>
+                                <button
+                                    onClick={() => {
+                                        if (!lineItems || lineItems.length === 0) return;
+                                        const encoded = encodeURIComponent(JSON.stringify(lineItems));
+                                        router.push(`/surprisegift?items=${encoded}`)
+                                    }}
+                                    disabled={!topItem}
+                                    className='px-4 py-2 rounded-[8px] border-2 border-[#822BE2] text-[#822BE2] font-semibold hover:bg-purple-50'
+                                >
+                                    Surprise Gift Delivery
+                                </button>
+                                {amount >= 50 && (
+                                    <button
+                                        onClick={() => setIsCollabOpen(true)}
+                                        className='px-4 py-2 rounded-[8px] bg-[#822BE2] text-white font-semibold hover:bg-purple-600'
+                                    >
+                                        Gift Collaboration
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
