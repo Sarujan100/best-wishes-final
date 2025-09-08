@@ -221,32 +221,28 @@ export default function FancyCarousel() {
         {/* Hero Carousel */}
         <div className="w-full h-[300px] sm:h-[400px] lg:h-[500px] relative rounded-xl overflow-hidden shadow-lg">
           <Slider {...settings}>
-            {heroSections.map((heroSection, index) => (
-              <div key={heroSection._id || index} className="relative w-full h-[300px] sm:h-[400px] lg:h-[500px]">
+            {heroSections.length > 0 ? (
+              heroSections.map((heroSection, index) => (
+                <div key={heroSection._id || index} className="relative w-full h-[300px] sm:h-[400px] lg:h-[500px]">
+                  <Image
+                    src={heroSection.image || "/placeholder.svg"}
+                    alt={heroSection.title || `Slide ${index + 1}`}
+                    fill
+                    className="object-cover"
+                    priority={index === 0}
+                  />
+                </div>
+              ))
+            ) : (
+              <div className="relative w-full h-[300px] sm:h-[400px] lg:h-[500px]">
                 <Image
-                  src={heroSection.image || "/placeholder.svg"}
-                  alt={heroSection.title || `Slide ${index + 1}`}
+                  src="/placeholder.svg"
+                  alt="Placeholder"
                   fill
                   className="object-cover"
-                  priority={index === 0}
                 />
-                {/* Optional: Add overlay with title and description */}
-                {(heroSection.title || heroSection.description) && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6">
-                    {heroSection.title && (
-                      <h2 className="text-white text-xl sm:text-2xl lg:text-3xl font-bold mb-2">
-                        {heroSection.title}
-                      </h2>
-                    )}
-                    {heroSection.description && (
-                      <p className="text-white/90 text-sm sm:text-base">
-                        {heroSection.description}
-                      </p>
-                    )}
-                  </div>
-                )}
               </div>
-            ))}
+            )}
           </Slider>
         </div>
 
@@ -265,59 +261,35 @@ export default function FancyCarousel() {
           </div>
 
 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-4">
-  {categories && categories.length > 0 ? (
-    categories.slice(0, showMoreCategories ? categories.length : 6).map((category, index) => (
-      <div 
-        key={category._id || index} 
-        className="flex flex-col items-center space-y-2 group cursor-pointer transform hover:scale-105 transition-all duration-300"
-        onClick={() => handleCategoryClick(category.name)}
-      >
-        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-gray-200 overflow-hidden group-hover:border-purple-400 group-hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-purple-50 to-pink-50">
-          <Image
-            src={getCategoryImage(category)}
-            alt={category.name}
-            width={80}
-            height={80}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-          />
-        </div>
-        <span className="text-xs sm:text-sm text-center text-gray-700 group-hover:text-purple-600 transition-colors font-medium">
-          {category.name}
-        </span>
+  {(categories && categories.length > 0 ? categories.slice(0, showMoreCategories ? categories.length : 6) : [
+    { name: "Balloons", image: "/balloon.svg" },
+    { name: "Mugs", image: "/mug.svg" },
+    { name: "Birthday Cards", image: "/birthday-invitation.svg" },
+    { name: "Home & Living", image: "/home.svg" },
+    { name: "Party Supplies", image: "/party.svg" },
+    { name: "Decorations", image: "/decoration.svg" },
+    { name: "Gifts", image: "/gift.svg" },
+    { name: "Keychains", image: "/keychain.svg" },
+  ].slice(0, showMoreCategories ? 8 : 6)).map((category, index) => (
+    <div 
+      key={category._id || index} 
+      className="flex flex-col items-center space-y-2 group cursor-pointer transform hover:scale-105 transition-all duration-300"
+      onClick={() => handleCategoryClick(category.name)}
+    >
+      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-gray-200 overflow-hidden group-hover:border-purple-400 group-hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-purple-50 to-pink-50">
+        <Image
+          src={getCategoryImage(category)}
+          alt={category.name}
+          width={80}
+          height={80}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+        />
       </div>
-    ))
-  ) : (
-    // Fallback categories if database is empty
-    [
-      { name: "Balloons", image: "/balloon.svg" },
-      { name: "Mugs", image: "/mug.svg" },
-      { name: "Birthday Cards", image: "/birthday-invitation.svg" },
-      { name: "Home & Living", image: "/home.svg" },
-      { name: "Party Supplies", image: "/party.svg" },
-      { name: "Decorations", image: "/decoration.svg" },
-      { name: "Gifts", image: "/gift.svg" },
-      { name: "Keychains", image: "/keychain.svg" },
-    ].slice(0, showMoreCategories ? 8 : 6).map((category, index) => (
-      <div 
-        key={index} 
-        className="flex flex-col items-center space-y-2 group cursor-pointer transform hover:scale-105 transition-all duration-300"
-        onClick={() => handleCategoryClick(category.name)}
-      >
-        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-gray-200 overflow-hidden group-hover:border-purple-400 group-hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-purple-50 to-pink-50">
-          <Image
-            src={category.image}
-            alt={category.name}
-            width={80}
-            height={80}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-          />
-        </div>
-        <span className="text-xs sm:text-sm text-center text-gray-700 group-hover:text-purple-600 transition-colors font-medium">
-          {category.name}
-        </span>
-      </div>
-    ))
-  )}
+      <span className="text-xs sm:text-sm text-center text-gray-700 group-hover:text-purple-600 transition-colors font-medium">
+        {category.name}
+      </span>
+    </div>
+  ))}
 </div>
 
         </section>
