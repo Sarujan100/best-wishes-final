@@ -35,6 +35,7 @@ export default function FancyCarousel() {
   const [localCategories, setLocalCategories] = useState([]);
   const router = useRouter();
 
+
   // Event data for Upcoming Events section
   const events = [
     {
@@ -219,7 +220,6 @@ export default function FancyCarousel() {
             </Button>
           </div>
 
-          // ...existing code...
 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-4">
   {categories && categories.length > 0 ? (
     categories.slice(0, showMoreCategories ? categories.length : 6).map((category, index) => (
@@ -275,7 +275,7 @@ export default function FancyCarousel() {
     ))
   )}
 </div>
-// ...existing code...
+
         </section>
 
         {/* Hot Sales Section */}
@@ -285,58 +285,66 @@ export default function FancyCarousel() {
               <FaFire className="text-red-500" />
               Hot Sales
             </h2>
-            <Button variant="ghost" className="text-purple-600 hover:text-purple-700">
-              Explore more <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {allProducts && allProducts.length > 0 ? (
-              allProducts.slice(0, 6).map((product) => {
-                // const imageSrc = getProductImage(product);
-                // const isExternal = isExternalImage(imageSrc);
-                
-                return (
-                  <Card key={product._id} className="group hover:shadow-lg transition-shadow">
-                    <CardContent className="p-0">
-                      <div className="relative">
-                        <Image
-                          src="/placeholder.svg"
-                          alt={product.name}
-                          width={200}
-                          height={200}
-                          className="w-full aspect-square object-cover rounded-t-lg"
-                        />
-                        <div className="absolute top-2 left-2 bg-red-100 rounded-full p-1">
-                          <Flame className="text-red-500 w-3 h-3 sm:w-4 sm:h-4" />
-                        </div>
-                        <div className="absolute top-2 right-2 bg-purple-100 rounded-full p-1 cursor-pointer hover:bg-purple-200 transition-colors">
-                          <Heart className="text-purple-500 w-3 h-3 sm:w-4 sm:h-4" />
-                        </div>
+              allProducts.filter(product => Math.floor(product.rating || 0) === 5).slice(0, 6).map((product) => (
+                <Link key={product._id} href={`/productDetail/${product._id}`} className="block">
+                  <CardContent className="p-0 border-1 border-[#D9D9D9] rounded-[10px]">
+                    <div className="relative">
+                      <Image
+                        src={product.images[0].url || "/placeholder.svg"}
+                        alt={product.name}
+                        width={200}
+                        height={200}
+                        className="w-full aspect-square object-cover rounded-t-lg"
+                      />
+                      <div className="absolute top-2 left-2 bg-red-100 rounded-full p-1">
+                        <Flame className="text-red-500 w-3 h-3 sm:w-4 sm:h-4" />
                       </div>
-                      <div className="p-3">
-                        <h3 className="font-medium text-sm sm:text-base truncate">{product.name}</h3>
-                        <p className="font-semibold text-purple-600 text-sm sm:text-base">
-                          US ${product.price || product.retailPrice}
-                        </p>
-                        <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
-                          {Array.from({ length: 5 }, (_, i) => {
-                            const fullStars = Math.floor(product.rating || 0);
-                            const hasHalfStar = (product.rating || 0) - fullStars >= 0.5;
-                            if (i < fullStars) {
-                              return <AiFillStar key={i} />;
-                            } else if (i === fullStars && hasHalfStar) {
-                              return <AiTwotoneStar key={i} />;
-                            } else {
-                              return <AiOutlineStar key={i} />;
-                            }
-                          })}
-                        </div>
+                      <div className="absolute top-2 right-2 bg-purple-100 rounded-full p-1 cursor-pointer hover:bg-purple-200 transition-colors"
+                        onClick={e => {
+                          e.preventDefault();
+                          if (!isAuthenticated) return alert('Please login to add to wishlist');
+                          dispatch(addToWishlist(product));
+                          toast.success('Added to wishlist!');
+                        }}
+                      >
+                        <Heart className="text-purple-500 w-3 h-3 sm:w-4 sm:h-4" />
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
+                    </div>
+                    <div className="p-3">
+                      <h3 className="font-medium text-sm sm:text-base truncate">{product.name}</h3>
+                      <p className="font-semibold text-purple-600 text-sm sm:text-base">US ${product.price || product.retailPrice}</p>
+                      <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
+                        {Array.from({ length: 5 }, (_, i) => {
+                          const fullStars = Math.floor(product.rating || 0);
+                          const hasHalfStar = (product.rating || 0) - fullStars >= 0.5;
+                          if (i < fullStars) {
+                            return <AiFillStar key={i} />;
+                          } else if (i === fullStars && hasHalfStar) {
+                            return <AiTwotoneStar key={i} />;
+                          } else {
+                            return <AiOutlineStar key={i} />;
+                          }
+                        })}
+                      </div>
+                      <Button
+                        className="mt-2 w-full bg-purple-600 hover:bg-purple-700 text-white"
+                        onClick={e => {
+                          e.preventDefault();
+                          if (!isAuthenticated) return alert('Please login to add to cart');
+                          dispatch(addToCart({ product, quantity: 1 }));
+                          toast.success('Added to cart!');
+                        }}
+                      >
+                        Add to Cart
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Link>
+              ))
             ) : (
               // Fallback to static items if no products
               [1, 2, 3, 4, 5, 6].map((item) => (
@@ -404,7 +412,17 @@ export default function FancyCarousel() {
         {/* All Products */}
      
         <section className="space-y-6 ">
-          <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">All Products</h2>
+           <div className="flex justify-between items-center">
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center gap-2">
+              All Products
+            </h2>
+            <Button 
+             variant="ghost"
+             className="text-purple-600 hover:text-purple-700"
+             onClick={() => router.push("/allProducts")}>
+              Explore more <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
+          </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 ">
             {allProducts && allProducts.length > 0 ? (
