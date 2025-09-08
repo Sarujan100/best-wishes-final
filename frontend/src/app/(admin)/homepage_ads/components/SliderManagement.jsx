@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,166 +8,54 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, Image as ImageIcon, Upload } from "lucide-react"
+import { Plus, Edit, Trash2, Image as ImageIcon } from "lucide-react"
 import Image from "next/image"
 
 export default function SliderManagement() {
-  const [slides, setSlides] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [slides, setSlides] = useState([
+    { id: 1, image: '/1.jpg', title: 'Welcome to Bestwise', description: 'Your one-stop shop for gifts', isActive: true },
+    { id: 2, image: '/2.jpg', title: 'Special Offers', description: 'Amazing deals on all products', isActive: true },
+    { id: 3, image: '/3.jpg', title: 'New Arrivals', description: 'Check out our latest collection', isActive: false }
+  ])
+
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingSlide, setEditingSlide] = useState(null)
-  const [imageFile, setImageFile] = useState(null)
-  const [imagePreview, setImagePreview] = useState('')
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    isActive: true,
-    order: 0
+    image: '',
+    isActive: true
   })
 
-  // Fetch hero sections on component mount
-  useEffect(() => {
-    fetchHeroSections()
-  }, [])
-
-  const fetchHeroSections = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('http://localhost:5000/api/hero-sections', {
-        credentials: 'include'
-      })
-      const data = await response.json()
-      if (data.success) {
-        setSlides(data.data)
-      }
-    } catch (error) {
-      console.error('Error fetching hero sections:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      setImageFile(file)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImagePreview(typeof reader.result === 'string' ? reader.result : '')
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
-    
-    if (!editingSlide && !imageFile) {
-      alert('Please select an image')
-      return
+    if (editingSlide) {
+      setSlides(prev => prev.map(slide => 
+        slide.id === editingSlide.id ? { ...slide, ...formData } : slide
+      ))
+    } else {
+      const newSlide = { id: Date.now(), ...formData }
+      setSlides(prev => [...prev, newSlide])
     }
-
-    const formDataToSend = new FormData()
-    formDataToSend.append('title', formData.title)
-    formDataToSend.append('description', formData.description)
-    formDataToSend.append('isActive', String(formData.isActive))
-    formDataToSend.append('order', String(formData.order))
-    
-    if (imageFile) {
-      formDataToSend.append('image', imageFile)
-    }
-
-    try {
-      setLoading(true)
-      const url = editingSlide ? `http://localhost:5000/api/hero-sections/${editingSlide._id}` : 'http://localhost:5000/api/hero-sections'
-      const method = editingSlide ? 'PUT' : 'POST'
-      
-      const response = await fetch(url, {
-        method,
-        body: formDataToSend,
-        credentials: 'include'
-      })
-
-      const data = await response.json()
-      
-      if (data.success) {
-        await fetchHeroSections() // Refresh the list
-        setIsDialogOpen(false)
-        setEditingSlide(null)
-        setFormData({ title: '', description: '', isActive: true, order: 0 })
-        setImageFile(null)
-        setImagePreview('')
-      } else {
-        alert(data.message || 'Error saving hero section')
-      }
-    } catch (error) {
-      console.error('Error saving hero section:', error)
-      alert('Error saving hero section')
-    } finally {
-      setLoading(false)
-    }
+    setIsDialogOpen(false)
+    setEditingSlide(null)
+    setFormData({ title: '', description: '', image: '', isActive: true })
   }
 
   const handleEdit = (slide) => {
     setEditingSlide(slide)
-    setFormData({
-      title: slide.title,
-      description: slide.description,
-      isActive: slide.isActive,
-      order: slide.order || 0
-    })
-    setImagePreview(slide.image)
+    setFormData(slide)
     setIsDialogOpen(true)
   }
 
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this hero section?')) {
-      return
-    }
-
-    try {
-      setLoading(true)
-      const response = await fetch(`http://localhost:5000/api/hero-sections/${id}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      })
-
-      const data = await response.json()
-      
-      if (data.success) {
-        await fetchHeroSections() // Refresh the list
-      } else {
-        alert(data.message || 'Error deleting hero section')
-      }
-    } catch (error) {
-      console.error('Error deleting hero section:', error)
-      alert('Error deleting hero section')
-    } finally {
-      setLoading(false)
-    }
+  const handleDelete = (id) => {
+    setSlides(prev => prev.filter(slide => slide.id !== id))
   }
 
-  const toggleStatus = async (id) => {
-    try {
-      setLoading(true)
-      const response = await fetch(`http://localhost:5000/api/hero-sections/${id}/toggle-status`, {
-        method: 'PATCH',
-        credentials: 'include'
-      })
-
-      const data = await response.json()
-      
-      if (data.success) {
-        await fetchHeroSections() // Refresh the list
-      } else {
-        alert(data.message || 'Error updating hero section status')
-      }
-    } catch (error) {
-      console.error('Error updating hero section status:', error)
-      alert('Error updating hero section status')
-    } finally {
-      setLoading(false)
-    }
+  const toggleStatus = (id) => {
+    setSlides(prev => prev.map(slide => 
+      slide.id === id ? { ...slide, isActive: !slide.isActive } : slide
+    ))
   }
 
   return (
@@ -210,55 +98,20 @@ export default function SliderManagement() {
                 />
               </div>
               <div>
-                <Label htmlFor="image">Upload Image</Label>
-                <div className="space-y-4">
-                  <Input
-                    id="image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="cursor-pointer"
-                  />
-                  {imagePreview && (
-                    <div className="relative w-full h-40 border rounded-lg overflow-hidden">
-                      <Image
-                        src={imagePreview}
-                        alt="Preview"
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                  {!imagePreview && !editingSlide && (
-                    <div className="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                      <div className="text-center text-gray-500">
-                        <Upload className="w-8 h-8 mx-auto mb-2" />
-                        <p>Click to upload an image</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <Label htmlFor="image">Image URL</Label>
+                <Input
+                  id="image"
+                  value={formData.image}
+                  onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                  placeholder="Enter image URL"
+                  required
+                />
               </div>
               <div className="flex gap-2">
-                <Button 
-                  type="submit" 
-                  className="bg-purple-600 hover:bg-purple-700"
-                  disabled={loading}
-                >
-                  {loading ? 'Saving...' : (editingSlide ? 'Update' : 'Add')} Slide
+                <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
+                  {editingSlide ? 'Update' : 'Add'} Slide
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => {
-                    setIsDialogOpen(false)
-                    setEditingSlide(null)
-                    setFormData({ title: '', description: '', isActive: true, order: 0 })
-                    setImageFile(null)
-                    setImagePreview('')
-                  }}
-                  disabled={loading}
-                >
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
               </div>
@@ -268,65 +121,52 @@ export default function SliderManagement() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading && slides.length === 0 ? (
-          <div className="col-span-full text-center py-8">
-            <p className="text-gray-500">Loading hero sections...</p>
-          </div>
-        ) : slides.length === 0 ? (
-          <div className="col-span-full text-center py-8">
-            <p className="text-gray-500">No hero sections found. Create your first one!</p>
-          </div>
-        ) : (
-          slides.map((slide) => (
-            <Card key={slide._id} className="overflow-hidden">
-              <div className="relative h-48">
-                <Image
-                  src={slide.image.startsWith('http') ? slide.image : `/${slide.image}`}
-                  alt={slide.title || 'Hero slide'}
-                  fill
-                  className="object-cover"
-                />
+        {slides.map((slide) => (
+          <Card key={slide.id} className="overflow-hidden">
+            <div className="relative h-48">
+              <Image
+                src={slide.image || '/placeholder.svg'}
+                alt={slide.title}
+                fill
+                className="object-cover"
+              />
+            </div>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-lg">{slide.title}</h3>
+                <Badge variant={slide.isActive ? "default" : "secondary"}>
+                  {slide.isActive ? "Active" : "Inactive"}
+                </Badge>
               </div>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-lg">{slide.title}</h3>
-                  <Badge variant={slide.isActive ? "default" : "secondary"}>
-                    {slide.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-                <p className="text-gray-600 text-sm mb-4">{slide.description}</p>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEdit(slide)}
-                    disabled={loading}
-                  >
-                    <Edit className="w-4 h-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={slide.isActive ? "secondary" : "default"}
-                    onClick={() => toggleStatus(slide._id)}
-                    disabled={loading}
-                  >
-                    <ImageIcon className="w-4 h-4 mr-1" />
-                    {slide.isActive ? "Disable" : "Enable"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => handleDelete(slide._id)}
-                    disabled={loading}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
+              <p className="text-gray-600 text-sm mb-4">{slide.description}</p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleEdit(slide)}
+                >
+                  <Edit className="w-4 h-4 mr-1" />
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant={slide.isActive ? "secondary" : "default"}
+                  onClick={() => toggleStatus(slide.id)}
+                >
+                  <ImageIcon className="w-4 h-4 mr-1" />
+                  {slide.isActive ? "Disable" : "Enable"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => handleDelete(slide.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   )

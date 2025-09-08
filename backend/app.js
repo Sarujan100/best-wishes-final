@@ -1,3 +1,4 @@
+
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
@@ -12,9 +13,11 @@ const categoryRoutes = require('./routes/categoryRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const sendEmailRoutes = require('./routes/sendMailRotes');
 const giftContributionRoutes = require('./routes/giftContributionRoutes');
+<<<<<<< HEAD
 const surpriseGiftRoutes = require('./routes/surpriseGiftRoutes');
+=======
+>>>>>>> 2d72065a26e8fe5eb82706b3ed0b7949f9734138
 const paymentRoutes = require('./routes/paymentRoutes');
-const heroSectionRoutes = require('./routes/heroSectionRoutes');
 
 
 const app = express();
@@ -29,7 +32,7 @@ if (process.env.FRONT_URL) {
 app.use(cors({
   origin: allowedOrigins,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Added PATCH method
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
 }));
 app.use(express.json());
@@ -46,8 +49,10 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/Email', sendEmailRoutes);
 app.use('/api/gift', giftContributionRoutes);
+<<<<<<< HEAD
 app.use('/api/surprise', surpriseGiftRoutes);
-app.use('/api/hero-sections', heroSectionRoutes);
+=======
+>>>>>>> 2d72065a26e8fe5eb82706b3ed0b7949f9734138
 
 
 module.exports = app;
