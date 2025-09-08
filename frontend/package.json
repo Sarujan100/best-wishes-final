@@ -31,7 +31,11 @@
     "@react-icons/all-files": "^4.1.0",
     "@reduxjs/toolkit": "^2.8.2",
     "@shadcn/ui": "^0.0.4",
+<<<<<<< HEAD
+    "@stripe/react-stripe-js": "^2.9.0",
+=======
     "@stripe/react-stripe-js": "^4.0.0",
+>>>>>>> 2d72065a26e8fe5eb82706b3ed0b7949f9734138
     "@stripe/stripe-js": "^4.10.0",
     "axios": "^1.9.0",
     "class-variance-authority": "^0.7.1",
@@ -40,9 +44,9 @@
     "framer-motion": "^12.18.1",
     "lucide-react": "^0.511.0",
     "next": "^15.3.3",
-    "react": "^19.0.0",
+    "react": "^18.2.0",
     "react-day-picker": "^9.7.0",
-    "react-dom": "^19.0.0",
+    "react-dom": "^18.2.0",
     "react-hook-form": "^7.57.0",
     "react-hot-toast": "^2.5.2",
     "react-icons": "^5.5.0",

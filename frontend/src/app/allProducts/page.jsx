@@ -41,9 +41,6 @@ function AllProducts() {
         price: { min: 0, max: 1000 },
         ratings: new Set(),
     });
-    const [currentPage, setCurrentPage] = useState(1);
-    const productsPerPage = 12;
-
     useEffect(() => {
         setMounted(true);
     }, []);
@@ -100,9 +97,6 @@ function AllProducts() {
             return categoryMatch && priceMatch && ratingMatch;
         });
     }, [allProducts, filters]);
-
-    const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
-    const currentProducts = filteredProducts.slice((currentPage - 1) * productsPerPage, currentPage * productsPerPage);
 
     if (!mounted) return null;
 
@@ -191,8 +185,8 @@ function AllProducts() {
                                 <p>Loading...</p>
                             ) : error ? (
                                 <p className="text-red-500 col-span-full">{error}</p>
-                            ) : currentProducts.length > 0 ? (
-                                currentProducts.map((product) => (
+                            ) : filteredProducts.length > 0 ? (
+                                filteredProducts.map((product) => (
                                     <Link key={product._id} href={`/productDetail/${product._id}`} className="block group">
                                         <Card className="overflow-hidden h-full flex flex-col">
                                             <CardContent className="p-0 flex-grow flex flex-col">
@@ -262,28 +256,7 @@ function AllProducts() {
                             )}
                         </div>
 
-                        {/* Pagination */}
-                        {totalPages > 1 && (
-                            <div className="flex justify-center items-center mt-8 space-x-2">
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    disabled={currentPage === 1}
-                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                >
-                                    <ChevronRight className="h-4 w-4 rotate-180" />
-                                </Button>
-                                <span className="p-2 text-sm font-medium">{`Page ${currentPage} of ${totalPages}`}</span>
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    disabled={currentPage === totalPages}
-                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        )}
+
                     </main>
                 </div>
             </div>

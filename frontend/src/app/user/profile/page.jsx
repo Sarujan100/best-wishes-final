@@ -50,12 +50,9 @@ export default function ProfilePage() {
   // Orders summary state
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
-<<<<<<< HEAD
   // Surprise gifts state
   const [surpriseGifts, setSurpriseGifts] = useState([]);
   const [surpriseLoading, setSurpriseLoading] = useState(false);
-=======
->>>>>>> 2d72065a26e8fe5eb82706b3ed0b7949f9734138
 
   useEffect(() => {
     if (!user) {
@@ -105,7 +102,6 @@ export default function ProfilePage() {
     fetchOrders();
   }, [user]);
 
-<<<<<<< HEAD
   // Fetch surprise gifts
   useEffect(() => {
     if (!user) return;
@@ -123,8 +119,6 @@ export default function ProfilePage() {
     fetchSurprises();
   }, [user]);
 
-=======
->>>>>>> 2d72065a26e8fe5eb82706b3ed0b7949f9734138
   const fetchReminders = async () => {
     setReminderLoading(true);
     try {
@@ -617,7 +611,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-<<<<<<< HEAD
               {/* 5. Surprise Gifts */}
               <div className="bg-white rounded-md border" style={{ borderColor: 'rgba(217,217,217,0.5)' }}>
                 <div className="flex items-center gap-3 px-8 py-5 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
@@ -656,9 +649,6 @@ export default function ProfilePage() {
               </div>
 
               {/* 6. Change Password */}
-=======
-              {/* 5. Change Password */}
->>>>>>> 2d72065a26e8fe5eb82706b3ed0b7949f9734138
               <div className="bg-white rounded-md border" style={{ borderColor: 'rgba(217,217,217,0.5)' }}>
                 <div className="flex items-center gap-3 px-8 py-5 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
                   <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-pink-100 to-yellow-100">
