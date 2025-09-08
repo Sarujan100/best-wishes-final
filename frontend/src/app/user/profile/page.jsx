@@ -395,7 +395,7 @@ export default function ProfilePage() {
               {/* 1. Personal Information */}
               <div className="bg-white rounded-md border" style={{ borderColor: 'rgba(217,217,217,0.5)' }}>
                 <div className="flex items-center gap-3 px-8 py-5 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
-                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-purple-100 to-blue-100">
+                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-purple-00 to-blue-100">
                     <FaUser className="w-5 h-5 text-purple-600" />
                   </span>
                   <h3 className="text-xl font-semibold text-gray-900 tracking-tight">Personal Information</h3>
@@ -445,58 +445,75 @@ export default function ProfilePage() {
                   </div>
                 </form>
               </div>
+{/* 2. Order Summary */}
+<div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+  {/* Header */}
+  <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
+    <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-green-100 to-blue-100">
+      <FiShoppingBag className="w-5 h-5 text-green-600" />
+    </span>
+    <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Order Summary</h3>
+  </div>
 
-              {/* 2. Order Summary */}
-              <div className="bg-white rounded-md border" style={{ borderColor: 'rgba(217,217,217,0.5)' }}>
-                <div className="flex items-center gap-3 px-8 py-5 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
-                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-green-100 to-blue-100">
-                    <FiShoppingBag className="w-5 h-5 text-green-600" />
+  {/* Content */}
+  <div className="p-6">
+    {ordersLoading ? (
+      <div className="text-sm text-gray-500">Loading order summary...</div>
+    ) : (
+      <div className="flex flex-col gap-6">
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          {/* Total Orders */}
+          <div className="flex flex-col items-start rounded-xl border border-gray-100 bg-gray-50 p-4 hover:shadow-sm transition">
+            <span className="text-xs text-gray-500">Total Orders</span>
+            <span className="mt-1 text-2xl font-bold text-gray-900">{orders.length}</span>
+          </div>
+
+          {/* Last Order */}
+          <div className="flex flex-col items-start rounded-xl border border-gray-100 bg-gray-50 p-4 hover:shadow-sm transition">
+            <span className="text-xs text-gray-500">Last Order</span>
+            <span className="mt-1 text-lg font-medium text-gray-900">
+              {orders[0]?.orderedAt
+                ? new Date(orders[0].orderedAt).toLocaleDateString()
+                : "N/A"}
+            </span>
+          </div>
+
+          {/* Status Breakdown */}
+          <div className="flex flex-col items-start rounded-xl border border-gray-100 bg-gray-50 p-4 hover:shadow-sm transition">
+            <span className="text-xs text-gray-500">Status Overview</span>
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm">
+              {["Pending", "Processing", "Shipped", "Delivered", "Cancelled"].map((s) => {
+                const count = orders.filter((o) => o.status === s).length;
+                return (
+                  <span
+                    key={s}
+                    className="flex items-center gap-1 text-gray-700"
+                  >
+                    <span className="font-medium">{s}:</span>
+                    <span>{count}</span>
                   </span>
-                  <h3 className="text-xl font-semibold text-gray-900 tracking-tight">Order Summary</h3>
-                </div>
-                <div className="p-6">
-                  {ordersLoading ? (
-                    <div className="text-sm text-gray-500">Loading order summary...</div>
-                  ) : (
-                    <div className="flex flex-col gap-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="rounded-lg border border-gray-100 p-4">
-                          <p className="text-xs text-gray-500">Total Orders</p>
-                          <div className="mt-1 text-2xl font-semibold text-gray-900">{orders.length}</div>
-                        </div>
-                        <div className="rounded-lg border border-gray-100 p-4">
-                          <p className="text-xs text-gray-500">Last Order</p>
-                          <div className="mt-1 text-lg font-medium text-gray-900">{orders[0]?.orderedAt ? new Date(orders[0].orderedAt).toLocaleDateString() : 'N/A'}</div>
-                        </div>
-                        <div className="rounded-lg border border-gray-100 p-4">
-                          <p className="text-xs text-gray-500 mb-1">Status</p>
-                          <div className="text-sm text-gray-800">
-                            {['Pending','Processing','Shipped','Delivered','Cancelled'].map((s, i) => {
-                              const count = orders.filter(o => o.status === s).length;
-                              return (
-                                <span key={s} className="mr-3">
-                                  <span className="font-medium">{s}</span>: {count}
-                                  {i < 4 && <span className="text-gray-300"> | </span>}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex justify-end">
-                        <button
-                          onClick={() => router.push('/user/history')}
-                          className="px-3 py-2 text-sm border border-gray-200 rounded-md text-gray-700 hover:bg-gray-50"
-                        >
-                          View order history
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
-              {/* 3. Reminder History */}
+        {/* Action */}
+        <div className="flex justify-end">
+          <button
+            onClick={() => router.push("/user/history")}
+            className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition"
+          >
+            View Order History
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+</div>
+
+
               {/* 3. Reminder History */}
               <div className="bg-white rounded-md border" style={{ borderColor: 'rgba(217,217,217,0.5)' }}>
                 <div className="flex items-center gap-3 px-8 py-5 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
@@ -612,34 +629,106 @@ export default function ProfilePage() {
               </div>
 
               {/* 5. Surprise Gifts */}
-              <div className="bg-white rounded-md border" style={{ borderColor: 'rgba(217,217,217,0.5)' }}>
-                <div className="flex items-center gap-3 px-8 py-5 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
-                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-purple-100 to-pink-100">
-                    <FiGift className="w-5 h-5 text-purple-600" />
-                  </span>
-                  <h3 className="text-xl font-semibold text-gray-900 tracking-tight">Surprise Gift Orders</h3>
+              <div className="rounded-xl border bg-white" style={{ borderColor: 'rgba(217,217,217,0.5)' }}>
+                <div className="flex items-center justify-between px-6 py-5 border-b bg-gradient-to-r from-purple-50 to-pink-50 rounded-t-xl">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-purple-100 shadow-sm">
+                      <FiGift className="w-5 h-5 text-purple-600" />
+                    </span>
+                    <div>
+                      <h3 className="text-lg sm:text-xl font-semibold text-gray-900 tracking-tight">Surprise Gift Orders</h3>
+                      <p className="text-xs sm:text-sm text-gray-500">Track the status of your surprise deliveries</p>
+                    </div>
+                  </div>
+                  {/* {!surpriseLoading && surpriseGifts.length > 0 && (
+                    <button
+                      onClick={() => window.location.assign('/user/history')}
+                      className="px-3 py-1.5 text-xs sm:text-sm border border-gray-200 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      View all
+                    </button>
+                  )} */}
                 </div>
-                <div className="p-8">
+                <div className="p-6 sm:p-8">
                   {surpriseLoading ? (
-                    <div className="text-gray-500 text-sm">Loading...</div>
+                    <div className="flex items-center gap-3 text-gray-500 text-sm"><span className="w-4 h-4 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin"/> Loading...</div>
                   ) : surpriseGifts.length === 0 ? (
-                    <div className="text-gray-500 text-sm">No surprise gift orders yet.</div>
+                    <div className="flex flex-col items-center justify-center text-center py-10 rounded-lg border border-dashed border-gray-200 bg-gray-50">
+                      <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mb-3">
+                        <FiGift className="w-6 h-6 text-purple-600" />
+                      </div>
+                      <div className="text-gray-700 font-medium mb-1">No surprise gift orders yet</div>
+                      <div className="text-gray-500 text-sm mb-4">Start by choosing a product to surprise someone</div>
+                      <button onClick={() => window.location.assign('/allProducts')} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition-colors">Explore products</button>
+                    </div>
                   ) : (
-                    <div className="space-y-4">
-                      {surpriseGifts.slice(0,3).map((g) => (
-                        <div key={g._id} className="flex items-center justify-between border rounded-lg p-4">
-                          <div className="flex-1">
-                            <div className="text-sm text-gray-500">Recipient</div>
-                            <div className="font-medium text-gray-900">{g.recipientName}</div>
-                            <div className="text-xs text-gray-500">{new Date(g.createdAt).toLocaleDateString()} • {g.status}</div>
+                    <div className="flex flex-col gap-5">
+                      {surpriseGifts.slice(0,4).map((g) => (
+                        <div
+                          key={g._id}
+                          className="w-full rounded-xl border border-[#5C5C5C]-300 bg-white p-4 sm:p-5  hover:shadow-md transition-shadow"
+                        >
+                          {/* Header row */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-[11px] uppercase tracking-wide text-gray-500">Recipient</div>
+                              <div className="font-semibold text-gray-900 truncate">{g.recipientName}</div>
+                              <div className="text-xs text-gray-500">{new Date(g.createdAt).toLocaleDateString()}</div>
+                            </div>
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                                g.status === 'Delivered' ? 'bg-green-50 text-green-700 border border-green-200' :
+                                g.status === 'Cancelled' ? 'bg-red-50 text-red-700 border border-red-200' :
+                                g.status === 'OutForDelivery' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                                'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                              }`}
+                            >
+                              {g.status}
+                            </span>
                           </div>
-                          <div className="hidden sm:block flex-1 px-4">
-                            <div className="text-sm text-gray-500">Address</div>
-                            <div className="text-gray-800 truncate">{g.shippingAddress}</div>
+                          {/* Meta */}
+                          <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-600">
+                            {g.costume && g.costume !== 'none' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 border border-gray-200">
+                                <span className="font-medium">Costume:</span>
+                                <span className="capitalize">{g.costume}</span>
+                              </span>
+                            )}
+                            {g.suggestions && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 border border-gray-200 truncate max-w-full">
+                                <span className="font-medium">Note:</span>
+                                <span className="truncate">{g.suggestions}</span>
+                              </span>
+                            )}
                           </div>
-                          <div className="text-right">
-                            <div className="text-sm text-gray-500">Total</div>
-                            <div className="font-semibold">US ${g.total?.toFixed(2)}</div>
+                          {/* Items */}
+                          <div className="mt-4 divide-y divide-gray-100">
+                            {g.items?.map((it, idx) => {
+                              const image = typeof it.image === 'string' ? it.image : (it.product?.images && it.product.images[0] && (it.product.images[0].url || it.product.images[0])) || '/placeholder.svg';
+                              const pid = it.product?._id || it.product;
+                              const name = it.name || it.product?.name || 'Item';
+                              const price = typeof it.price === 'number' ? it.price : (it.product?.salePrice || it.product?.retailPrice || 0);
+                              return (
+                                <div key={idx} className="py-3 flex items-center gap-3">
+                                  <a href={pid ? `/productDetail/${pid}` : '#'} className="w-16 h-16 rounded-lg overflow-hidden border bg-gray-50 flex-shrink-0">
+                                    <img src={image || '/placeholder.svg'} alt={name} className="w-full h-full object-cover" />
+                                  </a>
+                                  <div className="flex-1 min-w-0">
+                                    <a href={pid ? `/productDetail/${pid}` : '#'} className="text-sm font-medium text-gray-900 hover:underline truncate block">{name}</a>
+                                    <div className="mt-1 flex items-center gap-2 text-xs text-gray-600">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100">Qty: {it.quantity || 1}</span>
+                                      <span className="text-gray-300">•</span>
+                                      <span>US ${Number(price).toFixed(2)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {/* Footer */}
+                          <div className="mt-4 pt-3 flex items-center justify-between border-t border-gray-100">
+                            <div className="text-sm text-gray-600">Total</div>
+                            <div className="text-base font-semibold text-gray-900">US ${Number(g.total || 0).toFixed(2)}</div>
                           </div>
                         </div>
                       ))}
