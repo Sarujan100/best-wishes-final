@@ -89,14 +89,7 @@ function Navbar() {
     dispatch(userLogout());
     dispatch(clearCart());
     dispatch(clearWishlist());
-    try {
-      if (typeof window !== 'undefined') {
-        // Clear persisted Redux state to avoid stale auth
-        localStorage.removeItem('persist:root');
-      }
-    } catch (_) {}
     setUserDropdownOpen(false);
-    router.push('/login');
   };
 
   return (
