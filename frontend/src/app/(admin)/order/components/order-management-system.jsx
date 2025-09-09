@@ -31,168 +31,132 @@ import {
   Printer,
 } from "lucide-react"
 
-// Enhanced mock data with multiple products per order
-const mockOrders = [
-  {
-    id: "DEL-001",
-    orderId: "ORD-2025-001",
-    referenceCode: "GC001",
-    customerName: "Sarah Johnson",
-    customerPhone: "+1 234-567-8900",
-    customerEmail: "sarah.j@email.com",
-    address: "456 Oak Avenue, Apt 2B, New York, NY 10002",
-    billingAddress: "123 Main Street, New York, NY 10001",
-    status: "pending_acceptance",
-    assignedStaff: null,
-    staffPhone: null,
-    estimatedTime: "2:00 PM - 4:00 PM",
-    codAmount: 0,
-    totalAmount: 289.97,
-    isGift: true,
-    giftWrap: true,
-    giftMessage: "🎉 Happy Birthday Sarah! Hope you love this special gift! 💝",
-    specialInstructions: "Ring doorbell twice, leave with concierge if no answer",
-    priority: "high",
-    orderDate: "2025-01-22T10:30:00Z",
-    items: [
-      {
-        id: "ITEM-001",
-        name: "Premium Gift Box - Luxury Collection",
-        sku: "PGB-LUX-001",
-        quantity: 1,
-        price: 129.99,
-        category: "Gift Boxes",
-        image: "/placeholder.svg?height=60&width=60&text=Gift+Box",
-        status: "in_stock",
-        weight: "2.5 lbs",
-      },
-      {
-        id: "ITEM-002",
-        name: "Artisan Chocolate Truffles",
-        sku: "ACT-DEL-002",
-        quantity: 2,
-        price: 49.99,
-        category: "Chocolates",
-        image: "/placeholder.svg?height=60&width=60&text=Chocolate",
-        status: "in_stock",
-        weight: "1.2 lbs",
-      },
-      {
-        id: "ITEM-003",
-        name: "Silk Ribbon Set",
-        sku: "SRS-PNK-003",
-        quantity: 1,
-        price: 59.99,
-        category: "Accessories",
-        image: "/placeholder.svg?height=60&width=60&text=Ribbon",
-        status: "in_stock",
-        weight: "0.3 lbs",
-      },
-    ],
-    packingStatus: "not_packed",
-    customerNotes: "First time customer, please handle with extra care",
-    internalNotes: "",
-    orderSource: "website",
-    paymentMethod: "credit_card",
-    shippingMethod: "express",
-    trackingNumber: "",
-  },
-  {
-    id: "DEL-002",
-    orderId: "ORD-2025-002",
-    referenceCode: "GC002",
-    customerName: "Michael Chen",
-    customerPhone: "+1 234-567-8901",
-    customerEmail: "michael.c@email.com",
-    address: "789 Pine Street, Brooklyn, NY 11201",
-    billingAddress: "789 Pine Street, Brooklyn, NY 11201",
-    status: "accepted",
-    assignedStaff: "John Delivery",
-    staffPhone: "+1 234-567-9000",
-    estimatedTime: "10:00 AM - 12:00 PM",
-    codAmount: 89.5,
-    totalAmount: 89.5,
-    isGift: false,
-    giftWrap: false,
-    giftMessage: null,
-    specialInstructions: "Call before delivery",
-    priority: "normal",
-    orderDate: "2025-01-22T09:15:00Z",
-    items: [
-      {
-        id: "ITEM-004",
-        name: "Artisan Candle Set",
-        sku: "ACS-VAN-004",
-        quantity: 2,
-        price: 44.75,
-        category: "Candles",
-        image: "/placeholder.svg?height=60&width=60&text=Candle",
-        status: "in_stock",
-        weight: "3.0 lbs",
-      },
-    ],
-    packingStatus: "packing_in_progress",
-    customerNotes: "Regular customer, prefers morning delivery",
-    internalNotes: "Customer requested vanilla scent",
-    orderSource: "mobile_app",
-    paymentMethod: "paypal",
-    shippingMethod: "standard",
-    trackingNumber: "TRK123456789",
-  },
-  {
-    id: "DEL-003",
-    orderId: "ORD-2025-003",
-    referenceCode: "GC003",
-    customerName: "Emma Wilson",
-    customerPhone: "+1 234-567-8902",
-    customerEmail: "emma.w@email.com",
-    address: "321 Elm Street, Queens, NY 11375",
-    billingAddress: "321 Elm Street, Queens, NY 11375",
-    status: "packed_ready",
-    assignedStaff: "Maria Rodriguez",
-    staffPhone: "+1 234-567-9001",
-    estimatedTime: "3:00 PM - 5:00 PM",
-    codAmount: 0,
-    totalAmount: 449.96,
-    isGift: true,
-    giftWrap: true,
-    giftMessage: "Congratulations on your promotion! 🎊",
-    specialInstructions: "Fragile items - handle with care",
-    priority: "high",
-    orderDate: "2025-01-22T08:45:00Z",
-    items: [
-      {
-        id: "ITEM-005",
-        name: "Luxury Jewelry Box",
-        sku: "LJB-ROG-005",
-        quantity: 1,
-        price: 299.99,
-        category: "Jewelry",
-        image: "/placeholder.svg?height=60&width=60&text=Jewelry",
-        status: "in_stock",
-        weight: "4.2 lbs",
-      },
-      {
-        id: "ITEM-006",
-        name: "Pearl Necklace",
-        sku: "PN-WHT-006",
-        quantity: 1,
-        price: 149.97,
-        category: "Jewelry",
-        image: "/placeholder.svg?height=60&width=60&text=Necklace",
-        status: "in_stock",
-        weight: "0.5 lbs",
-      },
-    ],
-    packingStatus: "packed",
-    customerNotes: "VIP customer, premium packaging required",
-    internalNotes: "Include care instructions for jewelry",
-    orderSource: "phone",
-    paymentMethod: "credit_card",
-    shippingMethod: "express",
-    trackingNumber: "TRK987654321",
-  },
-]
+
+// Fetch orders from backend
+import { useEffect } from "react";
+
+export function OrderManagementSystem() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOrdersWithUserDetails = async () => {
+      try {
+        setLoading(true);
+
+        // Log the API URL for debugging
+        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/orders/all`;
+        console.log('Fetching orders from:', apiUrl);
+
+        // Fetch orders from database (admin endpoint)
+        const ordersResponse = await fetch(apiUrl);
+
+        // Log the raw response for debugging
+        console.log('Raw orders response:', ordersResponse);
+
+        const ordersData = await ordersResponse.json();
+
+        // Log the parsed response data
+        console.log('Parsed orders data:', ordersData);
+
+        if (ordersData.orders && Array.isArray(ordersData.orders) && ordersData.orders.length > 0) {
+          // Console log each order's details
+          ordersData.orders.forEach(order => {
+            console.log('Order details:', order);
+          });
+
+          // Fetch user details for each order
+          const ordersWithUserDetails = await Promise.all(
+            ordersData.orders.map(async (order) => {
+              try {
+                // Fetch user details using userId from order
+                const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${order.userId}`);
+                const userData = await userResponse.json();
+
+                // Fetch product details for each item in the order
+                const itemsWithDetails = await Promise.all(
+                  (order.items || []).map(async (item) => {
+                    try {
+                      const productResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products/${item.productId}`);
+                      const productData = await productResponse.json();
+                      return {
+                        ...item,
+                        name: productData.name || item.name || 'Unknown Product',
+                        price: productData.price || item.price || 0,
+                        category: productData.category || item.category || 'Unknown',
+                        image: productData.image || item.image || '/placeholder.svg',
+                      };
+                    } catch (error) {
+                      console.error(`Error fetching product ${item.productId}:`, error);
+                      return {
+                        ...item,
+                        name: item.name || 'Unknown Product',
+                        price: item.price || 0,
+                        category: item.category || 'Unknown',
+                        image: item.image || '/placeholder.svg',
+                      };
+                    }
+                  })
+                );
+
+                return {
+                  ...order,
+                  // Map database fields to component expected fields
+                  id: order._id || order.id,
+                  orderId: order.orderId || order._id,
+                  referenceCode: order.referenceCode || order.orderId || order._id,
+                  customerName: userData.user?.name || userData.name || 'Unknown Customer',
+                  customerPhone: userData.user?.phone || userData.phone || 'N/A',
+                  customerEmail: userData.user?.email || userData.email || 'N/A',
+                  address: order.shippingAddress || userData.user?.address || 'N/A',
+                  billingAddress: order.billingAddress || userData.user?.address || 'N/A',
+                  status: order.status || 'pending_acceptance',
+                  assignedStaff: order.assignedStaff || null,
+                  staffPhone: order.staffPhone || null,
+                  estimatedTime: order.estimatedTime || 'TBD',
+                  codAmount: order.codAmount || 0,
+                  totalAmount: order.totalAmount || order.total || 0,
+                  isGift: order.isGift || false,
+                  giftWrap: order.giftWrap || false,
+                  giftMessage: order.giftMessage || null,
+                  specialInstructions: order.specialInstructions || '',
+                  priority: order.priority || 'normal',
+                  orderDate: order.createdAt || order.orderDate || new Date().toISOString(),
+                  items: itemsWithDetails,
+                  packingStatus: order.packingStatus || 'not_packed',
+                  customerNotes: order.customerNotes || '',
+                  internalNotes: order.internalNotes || '',
+                  orderSource: order.orderSource || 'website',
+                  paymentMethod: order.paymentMethod || 'credit_card',
+                  shippingMethod: order.shippingMethod || 'standard',
+                  trackingNumber: order.trackingNumber || '',
+                };
+              } catch (error) {
+                console.error(`Error fetching user details for order ${order._id}:`, error);
+                return {
+                  ...order,
+                  id: order._id || order.id,
+                  customerName: 'Unknown Customer',
+                  customerPhone: 'N/A',
+                  customerEmail: 'N/A',
+                  items: order.items || [],
+                };
+              }
+            })
+          );
+
+          setOrders(ordersWithUserDetails);
+        }
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        setOrders([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrdersWithUserDetails();
+  }, []);
 
 const statusColors = {
   pending_acceptance: "bg-yellow-100 text-yellow-800",
@@ -224,7 +188,7 @@ export function OrderManagementSystem() {
   const [internalNotes, setInternalNotes] = useState({})
   const [selectedOrder, setSelectedOrder] = useState(null)
 
-  const filteredOrders = mockOrders.filter((order) => {
+  const filteredOrders = orders.filter((order) => {
     const matchesSearch =
       order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.orderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -448,7 +412,7 @@ export function OrderManagementSystem() {
       </header>
 
       <div className="p-6 space-y-6">
-        <DashboardStats orders={mockOrders} />
+        <DashboardStats orders={orders} />
 
         {/* Enhanced Order Management */}
         <Card>
@@ -504,160 +468,182 @@ export function OrderManagementSystem() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredOrders.map((order) => (
-                        <React.Fragment key={order.id}>
-                          <TableRow key={order.id} className="hover:bg-gray-50">
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleOrderExpansion(order.id)}
-                                className="p-1"
-                              >
-                                {expandedOrders.includes(order.id) ? (
-                                  <ChevronDown className="h-4 w-4" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </TableCell>
+                      {loading ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8">
+                            <div className="flex items-center justify-center">
+                              <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                              Loading orders...
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : filteredOrders.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8">
+                            No orders found
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredOrders.map((order) => {
+                          const orderKey = order._id || order.id;
+                          return (
+                            <React.Fragment key={orderKey}>
+                              <TableRow key={orderKey} className="hover:bg-gray-50">
+                                <TableCell>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleOrderExpansion(orderKey)}
+                                    className="p-1"
+                                  >
+                                    {expandedOrders.includes(orderKey) ? (
+                                      <ChevronDown className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronRight className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </TableCell>
 
-                            <TableCell>
-                              <div className="space-y-1">
-                                <div className="font-medium text-blue-600">{order.referenceCode}</div>
-                                <div className="text-sm text-muted-foreground">{order.orderId}</div>
-                                <div className="flex gap-1">
-                                  <Badge variant="outline" className={priorityColors[order.priority]}>
-                                    {order.priority}
-                                  </Badge>
-                                  <Badge variant="outline" className="text-xs">
-                                    {order.orderSource}
-                                  </Badge>
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {new Date(order.orderDate).toLocaleDateString()}
-                                </div>
-                              </div>
-                            </TableCell>
-
-                            <TableCell>
-                              <div className="space-y-1">
-                                <div className="font-medium">{order.customerName}</div>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <Phone className="h-3 w-3" />
-                                  {order.customerPhone}
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <Mail className="h-3 w-3" />
-                                  {order.customerEmail}
-                                </div>
-                                {order.customerNotes && (
-                                  <div className="text-xs text-blue-600 bg-blue-50 p-1 rounded">
-                                    💡 {order.customerNotes}
+                                <TableCell>
+                                  <div className="space-y-1">
+                                    <div className="font-medium text-blue-600">{order.referenceCode}</div>
+                                    <div className="text-sm text-muted-foreground">{order.orderId}</div>
+                                    <div className="flex gap-1">
+                                      <Badge variant="outline" className={priorityColors[order.priority]}>
+                                        {order.priority}
+                                      </Badge>
+                                      <Badge variant="outline" className="text-xs">
+                                        {order.orderSource}
+                                      </Badge>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {new Date(order.orderDate).toLocaleDateString()}
+                                    </div>
                                   </div>
-                                )}
-                              </div>
-                            </TableCell>
+                                </TableCell>
 
-                            <TableCell>
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-                                  <span className="font-medium">{order.items.length} products</span>
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {order.items.reduce((sum, item) => sum + item.quantity, 0)} total items
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => toggleOrderExpansion(order.id)}
-                                  className="text-xs text-blue-600 hover:text-blue-700 p-0 h-auto"
-                                >
-                                  {expandedOrders.includes(order.id) ? "Hide Products" : "View Products"}
-                                </Button>
-                              </div>
-                            </TableCell>
+                                <TableCell>
+                                  <div className="space-y-1">
+                                    <div className="font-medium">{order.customerName}</div>
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <Phone className="h-3 w-3" />
+                                      {order.customerPhone}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <Mail className="h-3 w-3" />
+                                      {order.customerEmail}
+                                    </div>
+                                    {order.customerNotes && (
+                                      <div className="text-xs text-blue-600 bg-blue-50 p-1 rounded">
+                                        💡 {order.customerNotes}
+                                      </div>
+                                    )}
+                                  </div>
+                                </TableCell>
 
-                            <TableCell>
-                              <div className="space-y-2">
-                                <Badge className={statusColors[order.status]}>{order.status.replace("_", " ")}</Badge>
-                                <Badge className={packingStatusColors[order.packingStatus]}>
-                                  {order.packingStatus.replace("_", " ")}
-                                </Badge>
-                                {order.assignedStaff && (
-                                  <div className="text-xs text-muted-foreground">👤 {order.assignedStaff}</div>
-                                )}
-                              </div>
-                            </TableCell>
-
-                            <TableCell>
-                              <div className="space-y-1">
-                                <div className="font-medium text-lg">${order.totalAmount}</div>
-                                {order.codAmount > 0 && (
-                                  <div className="text-xs text-orange-600 font-medium">💵 COD: ${order.codAmount}</div>
-                                )}
-                                <div className="text-xs text-muted-foreground">
-                                  {order.paymentMethod.replace("_", " ")}
-                                </div>
-                              </div>
-                            </TableCell>
-
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {order.isGift && <Gift className="h-4 w-4 text-pink-500" />}
-                                {order.giftWrap && (
-                                  <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-800">
-                                    🎁 Wrapped
-                                  </Badge>
-                                )}
-                              </div>
-                            </TableCell>
-
-                            <TableCell className="text-right">
-                              <Dialog>
-                                <OrderActions
-                                  order={order}
-                                  onAcceptOrder={acceptOrder}
-                                  onRejectOrder={rejectOrder}
-                                  onPackingComplete={packingComplete}
-                                  onPrintCustomerDetails={printCustomerDetails}
-                                >
-                                  <DialogTrigger asChild>
+                                <TableCell>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                                      <span className="font-medium">{order.items?.length || 0} products</span>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {order.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0} total items
+                                    </div>
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="hover:bg-gray-50"
-                                      onClick={() => setSelectedOrder(order)}
+                                      onClick={() => toggleOrderExpansion(orderKey)}
+                                      className="text-xs text-blue-600 hover:text-blue-700 p-0 h-auto"
                                     >
-                                      <Eye className="h-4 w-4" />
+                                      {expandedOrders.includes(orderKey) ? "Hide Products" : "View Products"}
                                     </Button>
-                                  </DialogTrigger>
-                                </OrderActions>
+                                  </div>
+                                </TableCell>
 
-                                {selectedOrder && (
-                                  <OrderDetailsDialog
-                                    order={selectedOrder}
-                                    isOpen={!!selectedOrder}
-                                    onClose={() => setSelectedOrder(null)}
-                                    onAcceptOrder={acceptOrder}
-                                    onRejectOrder={rejectOrder}
-                                    onPackingComplete={packingComplete}
-                                    onPrintCustomerDetails={printCustomerDetails}
-                                    onUpdateQuantity={updateQuantity}
-                                    onRemoveItem={removeItem}
-                                    onSaveInternalNotes={saveInternalNotes}
-                                    internalNotes={internalNotes}
-                                    setInternalNotes={setInternalNotes}
-                                  />
-                                )}
-                              </Dialog>
-                            </TableCell>
-                          </TableRow>
+                                <TableCell>
+                                  <div className="space-y-2">
+                                    <Badge className={statusColors[order.status] || statusColors.pending_acceptance}>
+                                      {order.status?.replace("_", " ") || "pending"}
+                                    </Badge>
+                                    <Badge className={packingStatusColors[order.packingStatus] || packingStatusColors.not_packed}>
+                                      {order.packingStatus?.replace("_", " ") || "not packed"}
+                                    </Badge>
+                                    {order.assignedStaff && (
+                                      <div className="text-xs text-muted-foreground">👤 {order.assignedStaff}</div>
+                                    )}
+                                  </div>
+                                </TableCell>
 
-                          <ExpandableProductRow order={order} isExpanded={expandedOrders.includes(order.id)} />
-                        </React.Fragment>
-                      ))}
+                                <TableCell>
+                                  <div className="space-y-1">
+                                    <div className="font-medium text-lg">${order.totalAmount || 0}</div>
+                                    {order.codAmount > 0 && (
+                                      <div className="text-xs text-orange-600 font-medium">💵 COD: ${order.codAmount}</div>
+                                    )}
+                                    <div className="text-xs text-muted-foreground">
+                                      {order.paymentMethod?.replace("_", " ") || "credit card"}
+                                    </div>
+                                  </div>
+                                </TableCell>
+
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    {order.isGift && <Gift className="h-4 w-4 text-pink-500" />}
+                                    {order.giftWrap && (
+                                      <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-800">
+                                        🎁 Wrapped
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </TableCell>
+
+                                <TableCell className="text-right">
+                                  <Dialog>
+                                    <OrderActions
+                                      order={order}
+                                      onAcceptOrder={acceptOrder}
+                                      onRejectOrder={rejectOrder}
+                                      onPackingComplete={packingComplete}
+                                      onPrintCustomerDetails={printCustomerDetails}
+                                    >
+                                      <DialogTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="hover:bg-gray-50"
+                                          onClick={() => setSelectedOrder(order)}
+                                        >
+                                          <Eye className="h-4 w-4" />
+                                        </Button>
+                                      </DialogTrigger>
+                                    </OrderActions>
+
+                                    {selectedOrder && (
+                                      <OrderDetailsDialog
+                                        order={selectedOrder}
+                                        isOpen={!!selectedOrder}
+                                        onClose={() => setSelectedOrder(null)}
+                                        onAcceptOrder={acceptOrder}
+                                        onRejectOrder={rejectOrder}
+                                        onPackingComplete={packingComplete}
+                                        onPrintCustomerDetails={printCustomerDetails}
+                                        onUpdateQuantity={updateQuantity}
+                                        onRemoveItem={removeItem}
+                                        onSaveInternalNotes={saveInternalNotes}
+                                        internalNotes={internalNotes}
+                                        setInternalNotes={setInternalNotes}
+                                      />
+                                    )}
+                                  </Dialog>
+                                </TableCell>
+                              </TableRow>
+
+                              <ExpandableProductRow order={order} isExpanded={expandedOrders.includes(orderKey)} />
+                            </React.Fragment>
+                          );
+                        })
+                      )}
                     </TableBody>
                   </Table>
                 </div>
