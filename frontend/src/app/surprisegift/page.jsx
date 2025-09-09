@@ -27,6 +27,8 @@ function page() {
     // Selected product state
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [quantity, setQuantity] = useState(1);
+    // Multiple items from cart (optional)
+    const [cartItems, setCartItems] = useState([]);
     const shippingFee = 8;
 
     const price = useMemo(() => {
@@ -37,7 +39,13 @@ function page() {
         return typeof sp === 'number' && sp > 0 ? sp : (typeof rp === 'number' && rp > 0 ? rp : (typeof p === 'number' ? p : 0));
     }, [selectedProduct]);
 
-    const total = useMemo(() => ((price * quantity) + (selectedProduct ? shippingFee : 0)), [price, quantity, selectedProduct]);
+    const total = useMemo(() => {
+        if (cartItems && cartItems.length > 0) {
+            const itemsTotal = cartItems.reduce((sum, i) => sum + (Number(i.price || 0) * Number(i.quantity || 0)), 0);
+            return itemsTotal + shippingFee;
+        }
+        return ((price * quantity) + (selectedProduct ? shippingFee : 0));
+    }, [price, quantity, selectedProduct, cartItems]);
 
     // Fetch product if productId passed in query
     useEffect(() => {
@@ -58,6 +66,28 @@ function page() {
             }
         })();
         return () => { ignore = true; };
+    }, [searchParams]);
+
+    // Read cart items from query param `items` (JSON-encoded)
+    useEffect(() => {
+        const itemsParam = searchParams.get('items');
+        if (!itemsParam) return;
+        try {
+            const parsed = JSON.parse(decodeURIComponent(itemsParam));
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                setCartItems(parsed.map((i) => ({
+                    productId: i.productId,
+                    name: i.name,
+                    price: Number(i.price) || 0,
+                    quantity: Number(i.quantity) || 0,
+                    image: i.image || '/placeholder.svg',
+                })));
+                // Clear single selection UI
+                setSelectedProduct(null);
+            }
+        } catch (e) {
+            toast.error('Failed to load items for surprise gift');
+        }
     }, [searchParams]);
 
     const getProductImage = () => {
@@ -85,11 +115,11 @@ function page() {
             toast.error('Please fill required fields');
             return;
         }
-        if (!selectedProduct) {
-            toast.error('Please select a product to surprise');
+        if ((!selectedProduct) && (!cartItems || cartItems.length === 0)) {
+            toast.error('Please select at least one product to surprise');
             return;
         }
-        const items = [
+        const items = (cartItems && cartItems.length > 0) ? cartItems : [
             {
                 productId: selectedProduct._id,
                 name: selectedProduct.name,
@@ -119,8 +149,8 @@ function page() {
     }
 
     const saveApplyHandler = () => {
-        if (!selectedProduct) {
-            toast.error('Please select a product to surprise');
+        if ((!selectedProduct) && (!cartItems || cartItems.length === 0)) {
+            toast.error('Please select at least one product to surprise');
             return;
         }
         if (!recipientName || !recipientPhone || !shippingAddress) {
@@ -136,8 +166,40 @@ function page() {
                 <div className='flex w-full mt-[15px] flex-col md:flex-row'>
                     <div className='flex-col md:w-[65%] w-full items-center md:pr-[20px]'>
                         <div className='w-full border-1 border-[#822BE2] rounded-[5px] p-[10px] mb-[20px] flex items-center justify-center text-[18px] font-semibold text-[#822BE2]'>Surprise Gift Delivery</div>
-                        {/* Selected product */}
-                        {selectedProduct ? (
+                        {/* Multiple items from cart */}
+                        {cartItems && cartItems.length > 0 ? (
+                            <div className='w-full mb-[30px] md:mb-[50px]'>
+                                {cartItems.map((ci, idx) => (
+                                    <div key={idx} className='w-full flex justify-between items-center mb-[20px] gap-4 border-b pb-[12px]'>
+                                        <div className="relative w-[30%] md:w-[20%]">
+                                            <Image
+                                                src={ci.image || '/placeholder.svg'}
+                                                alt={ci.name || 'image'}
+                                                width={200}
+                                                height={180}
+                                                className="rounded-lg object-cover w-full h-auto"
+                                            />
+                                        </div>
+                                        <div className='flex-1 flex-col pl-[10px]'>
+                                            <p className='font-large line-clamp-2'>{ci.name}</p>
+                                            <p className='font-large font-semibold'>US ${Number(ci.price || 0).toFixed(2)}</p>
+                                        </div>
+                                        <div className='flex flex-col items-end gap-3'>
+                                            <div className='flex items-center gap-3'>
+                                                <span>Qty</span>
+                                                <div className='flex justify-center items-center gap-2'>
+                                                    <span className='bg-white border-2 border-[#D9D9D9] w-[48px] h-[40px] rounded-[5px] flex justify-center items-center font-large'>{ci.quantity}</span>
+                                                </div>
+                                            </div>
+                                            <div className='text-right'>
+                                                <span className='text-sm text-gray-700'>Subtotal:&nbsp;</span>
+                                                <span className='font-semibold'>US {(Number(ci.price || 0) * Number(ci.quantity || 0)).toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : selectedProduct ? (
                             <div className='w-full flex justify-between items-center mb-[30px] md:mb-[50px] gap-4'>
                                 <div className="relative w-[30%] md:w-[20%] cursor-pointer" onClick={goToProduct}>
                                     <Image
@@ -255,8 +317,8 @@ function page() {
                 <SurpriseGiftModal
                     onClose={() => setShowConfirm(false)}
                     onConfirm={submitToServer}
-                    itemsCount={selectedProduct ? 1 : 0}
-                    deliveryFee={selectedProduct ? shippingFee : 0}
+                    itemsCount={(cartItems && cartItems.length > 0) ? cartItems.length : (selectedProduct ? 1 : 0)}
+                    deliveryFee={(cartItems && cartItems.length > 0) ? shippingFee : (selectedProduct ? shippingFee : 0)}
                     discounts={0}
                     estimateTotal={total}
                     confirmLoading={submitting}

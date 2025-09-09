@@ -53,14 +53,22 @@ export default function ProductImage({ src, alt, productName, width = 60, height
     )
   }
 
+  const getImageSrc = () => {
+    if (!src || typeof src !== 'string') return "/placeholder.svg"
+    if (src.startsWith('http')) return src
+    if (src.startsWith('/')) return src
+    return `/images/${src}`
+  }
+
   return (
     <Image
-      src={src || "/placeholder.svg"}
-      alt={alt}
+      src={getImageSrc()}
+      alt={alt || "Product Image"}
       width={width}
       height={height}
       className={`rounded-lg object-cover ${className}`}
       onError={() => setImageError(true)}
+      unoptimized
     />
   )
 }

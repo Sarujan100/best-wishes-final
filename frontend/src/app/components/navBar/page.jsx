@@ -8,11 +8,12 @@ import { HiMenu, HiX } from 'react-icons/hi';
 import { useDispatch, useSelector } from 'react-redux';
 import { userLogout } from '@/app/slices/userSlice';
 import { useRouter } from 'next/navigation';
+import axios from 'axios';
+import { toast } from 'sonner';
 import ReminderGift from '../../modal/reminder/page';
 import { Heart } from 'lucide-react';
 import { clearCart } from '@/app/slices/cartSlice';
 import { clearWishlist } from '@/app/slices/wishlistSlice';
-import axios from 'axios';
 
 function Navbar() {
   const { user } = useSelector((state) => state.userState);
@@ -85,18 +86,19 @@ function Navbar() {
     router.push(path);
   };
 
-  const logoutHandler = () => {
-    dispatch(userLogout());
+  const logoutHandler = async () => {
+    try {
+      // Call the backend logout endpoint to clear the cookie
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/logout`, {}, { withCredentials: true });
+      dispatch(userLogout());
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to logout. Please try again.');
+    }
     dispatch(clearCart());
     dispatch(clearWishlist());
-    try {
-      if (typeof window !== 'undefined') {
-        // Clear persisted Redux state to avoid stale auth
-        localStorage.removeItem('persist:root');
-      }
-    } catch (_) {}
     setUserDropdownOpen(false);
-    router.push('/login');
   };
 
   return (

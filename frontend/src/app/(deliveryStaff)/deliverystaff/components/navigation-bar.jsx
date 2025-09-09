@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Bell, Package, AlertCircle, History } from "lucide-react"
+import { Bell, Package, AlertCircle, History, Route, BarChart3 } from "lucide-react"
 import ProfileAvatar from "./profile-avatar"
 import ProfilePage from "./profile-page"
 import Image from "next/image";
@@ -109,6 +109,18 @@ export default function NavigationBar({ activeTab, onTabChange }) {
       label: "Delivery Status",
       shortLabel: "Delivery",
       icon: Package,
+    },
+    {
+      id: "route",
+      label: "Delivery Route",
+      shortLabel: "Route",
+      icon: Route,
+    },
+    {
+      id: "analytics",
+      label: "Analytics",
+      shortLabel: "Analytics",
+      icon: BarChart3,
     },
     {
       id: "complains",

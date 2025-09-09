@@ -212,7 +212,7 @@ function ProductDetailPage() {
               <button className='flex justify-center items-center border text-white bg-[#822BE2] rounded-[8px] w-full h-[50px] gap-2 font-bold' onClick={() => router.push(`/payment?productId=${product._id}&qty=${quantity}`)}>
                 Get now
               </button>
-              <div className="w-full flex flex-col sm:flex-row gap-[15px]">
+              {/* <div className="w-full flex flex-col sm:flex-row gap-[15px]">
                 {product.salePrice >= 10 && (
                   <button
                     onClick={openCollaborativeModal}
@@ -229,7 +229,7 @@ function ProductDetailPage() {
                 >
                   Apply Surprise Gift
                 </button>
-              </div>
+              </div> */}
 
             </div>
 
