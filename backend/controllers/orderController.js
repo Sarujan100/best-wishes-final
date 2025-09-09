@@ -44,16 +44,3 @@ exports.createOrder = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to create order', error: err.message });
   }
 };
-
-// Admin: Get all orders
-exports.getAllOrders = async (req, res) => {
-  try {
-    console.log('Fetching all orders from database...');
-    const orders = await Order.find({});
-    console.log('All orders:', orders);
-    res.status(200).json({ success: true, orders, message: `Successfully fetched ${orders.length} orders` });
-  } catch (err) {
-    console.error('Error fetching orders:', err);
-    res.status(500).json({ success: false, message: 'Failed to fetch all orders', error: err.message });
-  }
-};
