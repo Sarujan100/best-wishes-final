@@ -17,11 +17,15 @@ const userSlice = createSlice({
             }
         },
         userLogout(state, action) {
-            return {
-                isAuthenticated: false,
-                user: null,
-                role: null
-            }
+            // Clear the redux state
+            state.isAuthenticated = false;
+            state.user = null;
+            state.role = null;
+            // Clear the persisted state in localStorage
+            localStorage.clear();
+            // You might want to preserve some non-sensitive data in localStorage
+            // If so, only remove specific items instead of clearing everything
+            // localStorage.removeItem('persist:root');
         },
         updateUserProfile(state, action) {
             return {

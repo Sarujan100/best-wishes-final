@@ -12,6 +12,9 @@ import { RiLockPasswordFill } from "react-icons/ri";
 import { updateUserProfile } from "../../slices/userSlice";
 import { IoCloseCircleOutline } from "react-icons/io5";
 import { useRef } from "react";
+import { userLogout } from '@/app/slices/userSlice';
+import { clearCart } from '@/app/slices/cartSlice';
+import { clearWishlist } from '@/app/slices/wishlistSlice';
 import { fetchUserProfile } from '../../actions/userActions'; // import at the top
 
 export default function ProfilePage() {
@@ -84,6 +87,20 @@ export default function ProfilePage() {
     };
     fetchContributions();
   }, [user]);
+
+  
+  const logoutHandler = async () => {
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/logout`, {}, { withCredentials: true });
+      dispatch(userLogout());
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to logout. Please try again.');
+    }
+    dispatch(clearCart());
+    dispatch(clearWishlist());
+  };
 
   // Fetch user orders for summary
   useEffect(() => {
@@ -380,8 +397,8 @@ export default function ProfilePage() {
                     <span>View Orders</span>
                   </button>
                   <button
-                    onClick={() => {/* Add logout handler */}}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium shadow-sm"
+                    onClick={logoutHandler}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium shadow-sm hover:cursor-pointer"
                   >
                     <FiLogOut className="w-5 h-5" />
                     <span>Sign Out</span>
