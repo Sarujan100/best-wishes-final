@@ -241,6 +241,10 @@ export default function FancyCarousel() {
     setShowMoreCategories(!showMoreCategories);
   };
 
+  // Ensure unique categories
+  const uniqueCategories = Array.from(new Set(categories.map(category => category.name)))
+    .map(name => categories.find(category => category.name === name));
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
