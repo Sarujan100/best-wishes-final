@@ -6,7 +6,7 @@ import Image from "next/image"
 import "slick-carousel/slick/slick.css"
 import "slick-carousel/slick/slick-theme.css"
 import { FaFire } from "react-icons/fa6"
-import { Heart, Flame, ChevronRight } from "lucide-react"
+import { Heart, Flame, ChevronLeft, ChevronRight } from "lucide-react"
 import { FaRegClock } from "react-icons/fa"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -37,10 +37,13 @@ export default function FancyCarousel() {
   const [localCategories, setLocalCategories] = useState([]);
 
   const [heroSections, setHeroSections] = useState([]);
+  const [heroImages, setHeroImages] = useState([]);
   const [events, setEvents] = useState([]);
 
   const router = useRouter();
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl2 = process.env.NEXT_PUBLIC_API_URL_2;
 
   // Event data for Upcoming Events section
   const staticEvents = [
@@ -77,7 +80,7 @@ export default function FancyCarousel() {
   ];
 
   const [showMoreCategories, setShowMoreCategories] = useState(false);
-
+  const [sliderRef, setSliderRef] = useState(null);
 
   useEffect(() => {
     dispatch(getProducts())
@@ -87,7 +90,7 @@ export default function FancyCarousel() {
     // Fetch categories from backend
     const fetchCategories = async () => {
       try {
-        const res = await fetch("/api/categories");
+        const res = await fetch(`${apiUrl}/categories`);
         const data = await res.json();
         // If data is an array, use it directly; if wrapped in {data: []}, unwrap
         const cats = Array.isArray(data) ? data : data.data;
@@ -101,7 +104,7 @@ export default function FancyCarousel() {
     // Fetch hero sections from backend
     const fetchHeroSections = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/hero-sections/active");
+        const res = await fetch(`${apiUrl}/hero-sections/active`);
         const data = await res.json();
         if (data.success && data.data) {
           setHeroSections(data.data);
@@ -124,10 +127,26 @@ export default function FancyCarousel() {
       }
     };
 
+    // Fetch only images from HeroSection database
+    const fetchHeroImages = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/hero-sections/active`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          // Only extract image URLs
+          setHeroImages(data.data.map(item => item.image).filter(Boolean));
+        } else {
+          setHeroImages(["/1.jpg", "/2.jpg", "/3.jpg"]);
+        }
+      } catch (err) {
+        setHeroImages(["/1.jpg", "/2.jpg", "/3.jpg"]);
+      }
+    };
+
     // Fetch active events from backend
     const fetchActiveEvents = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/events?isActive=true");
+        const response = await fetch(`${apiUrl}/events?isActive=true`);
         const data = await response.json();
         console.log("API Response:", data); // Log the API response
         if (data.events && data.events.length > 0) {
@@ -145,6 +164,7 @@ export default function FancyCarousel() {
 
     fetchCategories();
     fetchHeroSections();
+    fetchHeroImages();
     fetchActiveEvents();
 
     fetchCategories();
@@ -253,14 +273,35 @@ export default function FancyCarousel() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-12">
         {/* Hero Carousel */}
         <div className="w-full h-[300px] sm:h-[400px] lg:h-[500px] relative rounded-xl overflow-hidden shadow-lg">
-          <Slider {...settings}>
-            {images.map((src, index) => (
+          {/* Custom Arrows - default style, no purple or gradient */}
+          <div className="absolute inset-0 flex items-center justify-between pointer-events-none">
+            <button
+              className="pointer-events-auto bg-white rounded-full p-2 shadow-lg hover:scale-105 transition ml-2"
+              onClick={() => sliderRef && sliderRef.slickPrev()}
+              aria-label="Previous Slide"
+              type="button"
+              style={{ zIndex: 20 }}
+            >
+              <ChevronLeft className="w-7 h-7 text-gray-700" />
+            </button>
+            <button
+              className="pointer-events-auto bg-white rounded-full p-2 shadow-lg hover:scale-105 transition mr-2"
+              onClick={() => sliderRef && sliderRef.slickNext()}
+              aria-label="Next Slide"
+              type="button"
+              style={{ zIndex: 20 }}
+            >
+              <ChevronRight className="w-7 h-7 text-gray-700" />
+            </button>
+          </div>
+          <Slider {...settings} ref={setSliderRef}>
+            {(heroImages.length > 0 ? heroImages : images).map((src, index) => (
               <div key={index} className="relative w-full h-[300px] sm:h-[400px] lg:h-[500px]">
                 <Image
                   src={src || "/placeholder.svg"}
                   alt={`Slide ${index}`}
                   fill
-                  className="object-cover"
+                  className="object-cover animate-slide"
                   priority={index === 0}
                 />
               </div>
@@ -718,6 +759,17 @@ export default function FancyCarousel() {
         }
         .animate-blink {
           animation: blink 1s infinite;
+        }
+
+        @keyframes slide {
+          0% { transform: translateX(0); }
+          25% { transform: translateX(10px); }
+          50% { transform: translateX(0); }
+          75% { transform: translateX(-10px); }
+          100% { transform: translateX(0); }
+        }
+        .animate-slide {
+          animation: slide 2s infinite linear;
         }
       `}</style>
 
