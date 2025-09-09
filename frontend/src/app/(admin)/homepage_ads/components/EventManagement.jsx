@@ -1,71 +1,114 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Plus, Edit, Trash2, Calendar, Upload } from "lucide-react"
-import Image from "next/image"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Edit, Trash2, Calendar, Upload } from "lucide-react";
+import Image from "next/image";
+
+// Define the Event type using JSDoc comments
+/**
+ * @typedef {Object} Event
+ * @property {string} id
+ * @property {string} name
+ * @property {string} description
+ * @property {string} date
+ * @property {string} [image]
+ * @property {boolean} isActive
+ * @property {boolean} featured
+ */
 
 export default function EventManagement() {
+  // Initialize the events state with an empty array
   const [events, setEvents] = useState([
     {
-      id: "1",
-      name: "Summer Sale",
-      description: "Amazing summer discounts on all products",
-      date: "2024-07-15",
-      image: "/placeholder.svg?height=300&width=400",
-      isActive: true,
-      category: "Sale",
-      featured: true,
-    },
-    {
-      id: "2",
-      name: "Birthday Party Package",
-      description: "Complete birthday celebration package",
-      date: "2024-08-01",
-      image: "/placeholder.svg?height=300&width=400",
-      isActive: true,
-      category: "Party",
-      featured: false,
-    },
-    {
-      id: "3",
-      name: "Wedding Showcase",
-      description: "Elegant wedding decoration showcase",
-      date: "2024-09-10",
-      image: "/placeholder.svg?height=300&width=400",
+      id: "",
+      name: "",
+      description: "",
+      date: "",
+      image: "",
       isActive: false,
-      category: "Wedding",
       featured: false,
     },
-  ])
+  ]);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
+  const filteredEvents = events.filter((event) => event.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  const filteredEvents = events.filter(
-    (event) =>
-      event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.category.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  const deleteEvent = async (id) => {
+    if (!id) {
+      console.error("Event ID is undefined. Cannot delete event.");
+      return;
+    }
 
-  const toggleEventStatus = (id) => {
-    setEvents(events.map((event) => (event.id === id ? { ...event, isActive: !event.isActive } : event)))
-  }
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}`, {
+        method: "DELETE",
+      });
 
-  const toggleFeatured = (id) => {
-    setEvents(events.map((event) => (event.id === id ? { ...event, featured: !event.featured } : event)))
-  }
+      if (!response.ok) {
+        throw new Error("Failed to delete event");
+      }
 
-  const deleteEvent = (id) => {
-    setEvents(events.filter((event) => event.id !== id))
-  }
+      setEvents(events.filter((event) => event.id !== id));
+    } catch (error) {
+      console.error("Error deleting event:", error);
+    }
+  };
+
+  const handleSaveEvent = async (event) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(event),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save event");
+      }
+
+      const savedEvent = await response.json();
+      setEvents([...events, savedEvent.event]);
+    } catch (error) {
+      console.error("Error saving event:", error);
+    }
+  };
+
+  const handleUpdateEvent = async (updatedEvent) => {
+    if (!updatedEvent._id) {
+      console.error("Event ID is missing. Cannot update event.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${updatedEvent._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedEvent),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update event");
+      }
+
+      const data = await response.json();
+      setEvents(events.map((event) => (event._id === data.event._id ? data.event : event)));
+    } catch (error) {
+      console.error("Error updating event:", error);
+    }
+  };
 
   const EventForm = ({ event, onSave, onCancel }) => {
     const [formData, setFormData] = useState(
@@ -74,20 +117,19 @@ export default function EventManagement() {
         description: "",
         date: "",
         image: "",
-        isActive: true,
-        category: "Sale",
+        isActive: false,
         featured: false,
-      },
-    )
+      }
+    );
 
     const handleSubmit = (e) => {
-      e.preventDefault()
+      e.preventDefault();
       const newEvent = {
         id: event?.id || Date.now().toString(),
         ...formData,
-      }
-      onSave(newEvent)
-    }
+      };
+      onSave(newEvent);
+    };
 
     return (
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -101,15 +143,7 @@ export default function EventManagement() {
               required
             />
           </div>
-          <div>
-            <Label htmlFor="category">Category</Label>
-            <Input
-              id="category"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              required
-            />
-          </div>
+        
         </div>
 
         <div>
@@ -128,7 +162,7 @@ export default function EventManagement() {
           <Input
             id="date"
             type="date"
-            value={formData.date}
+            value={formData.date ? new Date(formData.date).toISOString().split('T')[0] : ""}
             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
             required
           />
@@ -139,14 +173,19 @@ export default function EventManagement() {
           <div className="flex items-center gap-4">
             <Input
               id="image"
-              value={formData.image}
-              onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-              placeholder="Image URL"
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    setFormData({ ...formData, image: reader.result });
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
             />
-            <Button type="button" variant="outline">
-              <Upload className="w-4 h-4 mr-2" />
-              Upload
-            </Button>
           </div>
         </div>
 
@@ -178,8 +217,25 @@ export default function EventManagement() {
           </Button>
         </div>
       </form>
-    )
-  }
+    );
+  };
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch events");
+        }
+        const data = await response.json();
+        setEvents(data.events);
+      } catch (error) {
+        console.error("Error fetching events:", error);
+      }
+    };
+
+    fetchEvents();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -202,9 +258,18 @@ export default function EventManagement() {
                   <DialogTitle>Add New Event</DialogTitle>
                 </DialogHeader>
                 <EventForm
+                  event={{
+                    id: "",
+                    name: "",
+                    description: "",
+                    date: "",
+                    image: "",
+                    isActive: false,
+                    featured: false,
+                  }}
                   onSave={(event) => {
-                    setEvents([...events, event])
-                    setIsAddDialogOpen(false)
+                    handleSaveEvent(event);
+                    setIsAddDialogOpen(false);
                   }}
                   onCancel={() => setIsAddDialogOpen(false)}
                 />
@@ -223,8 +288,8 @@ export default function EventManagement() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredEvents.map((event) => (
-              <Card key={event.id} className="overflow-hidden">
+            {filteredEvents.map((event, index) => (
+              <Card key={event.id || index} className="overflow-hidden">
                 <CardContent className="p-0">
                   <div className="relative h-48">
                     <Image src={event.image || "/placeholder.svg"} alt={event.name} fill className="object-cover" />
@@ -238,18 +303,19 @@ export default function EventManagement() {
                   <div className="p-4 space-y-3">
                     <div>
                       <h3 className="font-semibold text-lg">{event.name}</h3>
-                      <Badge variant="outline">{event.category}</Badge>
                       <p className="text-sm text-gray-600 mt-2">{event.description}</p>
-                      <p className="text-sm font-medium text-purple-600">{new Date(event.date).toLocaleDateString()}</p>
+                      <p className="text-sm font-medium text-purple-600">
+                        {event.date ? new Date(event.date).toLocaleDateString() : "Date not available"}
+                      </p>
                     </div>
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                          <Switch checked={event.isActive} onCheckedChange={() => toggleEventStatus(event.id)} />
+                          <Switch checked={event.isActive} disabled />
                           <span className="text-sm">Active</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Switch checked={event.featured} onCheckedChange={() => toggleFeatured(event.id)} />
+                          <Switch checked={event.featured} disabled />
                           <span className="text-sm">Featured</span>
                         </div>
                       </div>
@@ -269,9 +335,10 @@ export default function EventManagement() {
                           <EventForm
                             event={event}
                             onSave={(updatedEvent) => {
-                              setEvents(events.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)))
+                              handleUpdateEvent(updatedEvent);
+                              setIsAddDialogOpen(false);
                             }}
-                            onCancel={() => {}}
+                            onCancel={() => setIsAddDialogOpen(false)}
                           />
                         </DialogContent>
                       </Dialog>
@@ -279,7 +346,14 @@ export default function EventManagement() {
                         variant="outline"
                         size="sm"
                         className="text-red-600 hover:text-red-700 bg-transparent"
-                        onClick={() => deleteEvent(event.id)}
+                        onClick={() => {
+                          console.log("Deleting event:", event);
+                          if (event._id) {
+                            deleteEvent(event._id);
+                          } else {
+                            console.error("Event ID is missing. Cannot delete event.");
+                          }
+                        }}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -292,5 +366,5 @@ export default function EventManagement() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
