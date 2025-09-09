@@ -1,0 +1,273 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import Slider from "react-slick"
+import Image from "next/image"
+import "slick-carousel/slick/slick.css"
+import "slick-carousel/slick/slick-theme.css"
+import { FaFire } from "react-icons/fa6"
+import { Heart, Flame, ChevronRight } from "lucide-react"
+import { FaRegClock } from "react-icons/fa"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import Footer from "./components/footer/page"
+import Navbar from "./components/navBar/page"
+import { useDispatch, useSelector } from "react-redux"
+import { getProducts } from "./actions/productAction"
+import { getCategories } from "./actions/categoryAction"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { AiFillStar, AiOutlineStar, AiTwotoneStar } from 'react-icons/ai'
+import Loader from "./components/loader/page"
+import { addToCart } from "./slices/cartSlice"
+import { addToWishlist } from "./slices/wishlistSlice"
+import { toast, Toaster } from 'sonner'
+import { FiShoppingBag } from 'react-icons/fi'
+import { FaUserCircle } from 'react-icons/fa'
+
+const images = ["/1.jpg", "/2.jpg", "/3.jpg"]
+
+export default function FancyCarousel() {
+  const { allProducts } = useSelector((state) => state.productsState)
+  const { categories } = useSelector((state) => state.categoriesState)
+  const { isAuthenticated } = useSelector((state) => state.userState)
+  const dispatch = useDispatch()
+  const router = useRouter()
+
+  const [loading, setLoading] = useState(true)
+  const [localCategories, setLocalCategories] = useState([])
+  const [heroSections, setHeroSections] = useState([])
+  const [events, setEvents] = useState([])
+  const [showMoreCategories, setShowMoreCategories] = useState(false)
+
+  // Event data for Upcoming Events section
+  const staticEvents = [
+    {
+      name: "Father's Day",
+      key: "fathers-day",
+      image: "/fatherday.jpg",
+    },
+    {
+      name: "Mother's Day",
+      key: "mothers-day",
+      image: "/motherday.jpg",
+    },
+    {
+      name: "Birthday",
+      key: "birthday",
+      image: "/birthday-invitation.svg",
+    },
+    {
+      name: "Brother's Day",
+      key: "brothers-day",
+      image: "/profile-avatar.png",
+    },
+  ]
+
+  useEffect(() => {
+    dispatch(getProducts())
+    dispatch(getCategories())
+  }, [dispatch])
+
+  // Helper function to get product image
+  const getProductImage = (product) => {
+    if (product?.images && product.images.length > 0) {
+      if (typeof product.images[0] === 'object' && product.images[0].url) {
+        return product.images[0].url
+      }
+      return product.images[0]
+    }
+    return '/placeholder.svg'
+  }
+
+  // Helper function to check if image is external
+  const isExternalImage = (src) => {
+    return src && (src.startsWith('http://') || src.startsWith('https://'))
+  }
+
+  // Helper function to get category image
+  const getCategoryImage = (category) => {
+    if (category?.icon) {
+      return category.icon
+    }
+    if (category?.image) {
+      return category.image
+    }
+    // Fallback to icon or default image based on category name
+    const categoryName = category?.name?.toLowerCase()
+    if (categoryName?.includes('balloon')) return '/balloon.svg'
+    if (categoryName?.includes('mug')) return '/mug.svg'
+    if (categoryName?.includes('birthday') || categoryName?.includes('card')) return '/birthday-invitation.svg'
+    if (categoryName?.includes('home') || categoryName?.includes('living')) return '/home.svg'
+    return '/placeholder.svg'
+  }
+
+  const cards = [
+    {
+      icon: "✏️",
+      title: "Customizable Gift",
+      description:
+        "Design gifts your way — choose packaging, add notes, select colors or themes.",
+    },
+    {
+      icon: "⏰",
+      title: "Reminder Gift Notify",
+      description:
+        "Never miss special moments. Set reminders for birthdays, anniversaries, and holidays.",
+    },
+    {
+      icon: "👨‍👩‍👦",
+      title: "Collaborative Gift",
+      description:
+        "Invite friends and family to join in on a special gift. Split the cost, share the joy.",
+    },
+  ]
+
+  const settings = {
+    dots: true,
+    infinite: true,
+    speed: 500,
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    autoplay: true,
+    autoplaySpeed: 3000,
+    arrows: true,
+  }
+
+  // Handle category click navigation
+  const handleCategoryClick = (categoryName) => {
+    router.push(`/allProducts/showcase?category=${encodeURIComponent(categoryName)}`)
+  }
+
+  // Handle explore more functionality
+  const handleExploreMore = () => {
+    setShowMoreCategories(!showMoreCategories)
+  }
+
+  // Ensure unique categories
+  const uniqueCategories = Array.from(new Set(categories.map(category => category.name)))
+    .map(name => categories.find(category => category.name === name))
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-12">
+        {/* Categories Section */}
+        <section className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">Shop by Categories</h2>
+            <Button
+              variant="ghost"
+              className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 transition-all duration-200 hover:cursor-pointer"
+              onClick={handleExploreMore}
+            >
+              {showMoreCategories ? 'Show Less' : 'Explore more'}
+              <ChevronRight className={`ml-1 h-4 w-4 transition-transform duration-200  ${showMoreCategories ? 'rotate-90' : ''}`} />
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+            {uniqueCategories.slice(0, showMoreCategories ? uniqueCategories.length : 6).map((category, index) => (
+              <div 
+                key={category._id || index} 
+                className="flex flex-col items-center space-y-2 group cursor-pointer transform hover:scale-105 transition-all duration-300"
+                onClick={() => handleCategoryClick(category.name)}
+              >
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-gray-200 overflow-hidden group-hover:border-purple-400 group-hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-purple-50 to-pink-50">
+                  <Image
+                    src={getCategoryImage(category)}
+                    alt={category.name}
+                    width={80}
+                    height={80}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                </div>
+                <span className="text-xs sm:text-sm text-center text-gray-700 group-hover:text-purple-600 transition-colors font-medium">
+                  {category.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Services Section */}
+        <section className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center gap-2">
+              Our Services
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {cards.map((card, index) => (
+              <Card key={index} className="border-2 border-purple-200 hover:border-purple-400 transition-colors">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex items-center gap-3 bg-purple-600 text-white p-3 rounded-full">
+                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-xl">
+                      {card.icon}
+                    </div>
+                    <h3 className="font-semibold text-sm sm:text-base">{card.title}</h3>
+                  </div>
+                  <p className="text-gray-600 text-sm leading-relaxed">{card.description}</p>
+                  <Button variant="outline" className="w-full border-purple-600 text-purple-600 hover:bg-purple-50">
+                    Explore
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      </main>
+
+      <Footer />
+
+      {/* Custom Carousel Styles */}
+      <style jsx global>{`
+        .slick-dots li button:before {
+          font-size: 12px;
+          color: #9333ea;
+          opacity: 0.5;
+        }
+
+        .slick-dots li.slick-active button:before {
+          color: #9333ea;
+          opacity: 1;
+        }
+
+        .slick-prev:before,
+        .slick-next:before {
+          color: #9333ea;
+          font-size: 24px;
+        }
+
+        @media (max-width: 768px) {
+          .slick-prev:before,
+          .slick-next:before {
+            font-size: 20px;
+          }
+        }
+      `}</style>
+
+      <Toaster position="top-center" richColors closeButton />
+
+      {/* Floating Actions */}
+      <div className='fixed right-4 bottom-4 z-40 flex flex-col items-end gap-3'>
+        <button
+          onClick={() => router.push(isAuthenticated ? "/user/profile" : "/login")}
+          aria-label='Go to profile'
+          className='w-12 h-12 rounded-full shadow-md bg-white hover:cursor-pointer hover:bg-gray-50 flex items-center justify-center border border-gray-200'
+        >
+          <FaUserCircle className='text-[35px] text-[#822BE2]' />
+        </button>
+        <button
+          onClick={() => router.push('/allProducts')}
+          aria-label='Go to shopping'
+          className='flex items-center gap-2 px-4 py-3 rounded-full shadow-2xl bg-[#822BE2] hover:bg-purple-700 text-white hover:cursor-pointer'
+        >
+          <FiShoppingBag className='text-[18px]' />
+          <span className='hidden sm:inline'>Go to shopping</span>
+        </button>
+      </div>
+    </div>
+  )
+}
