@@ -1,4 +1,3 @@
-
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
@@ -16,6 +15,7 @@ const giftContributionRoutes = require('./routes/giftContributionRoutes');
 const surpriseGiftRoutes = require('./routes/surpriseGiftRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const heroSectionRoutes = require('./routes/heroSectionRoutes');
+const eventManagementRoutes = require('./routes/eventManagementRoutes');
 
 
 const app = express();
@@ -33,7 +33,8 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 //  Routes
@@ -49,6 +50,7 @@ app.use('/api/Email', sendEmailRoutes);
 app.use('/api/gift', giftContributionRoutes);
 app.use('/api/surprise', surpriseGiftRoutes);
 app.use('/api', heroSectionRoutes);
+app.use('/api/events', eventManagementRoutes);
 
 
 module.exports = app;
