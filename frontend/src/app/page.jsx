@@ -34,11 +34,12 @@ export default function FancyCarousel() {
   const [loading, setLoading] = useState(true);
   const [localCategories, setLocalCategories] = useState([]);
   const [heroSections, setHeroSections] = useState([]);
+  const [events, setEvents] = useState([]);
   const router = useRouter();
 
 
   // Event data for Upcoming Events section
-  const events = [
+  const staticEvents = [
     {
       name: "Father's Day",
       key: "fathers-day",
@@ -118,8 +119,28 @@ export default function FancyCarousel() {
       }
     };
 
+    // Fetch active events from backend
+    const fetchActiveEvents = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/events?isActive=true");
+        const data = await response.json();
+        console.log("API Response:", data); // Log the API response
+        if (data.events && data.events.length > 0) {
+          const activeEvents = data.events.filter(event => event.isActive); // Filter active events
+          setEvents(activeEvents);
+        } else {
+          console.warn("No events found or API response invalid:", data);
+          setEvents([]);
+        }
+      } catch (error) {
+        console.error("Error fetching active events:", error);
+        setEvents([]);
+      }
+    };
+
     fetchCategories();
     fetchHeroSections();
+    fetchActiveEvents();
   }, [dispatch])
 
   // Helper function to get product image
@@ -432,22 +453,36 @@ export default function FancyCarousel() {
             className="flex flex-row gap-4 overflow-x-auto pb-2 -mx-4 px-4 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-6 sm:overflow-visible sm:mx-0 sm:px-0"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
-            {events.map((event) => (
-              <Card
-                key={event.key}
-                className="min-w-[220px] max-w-[90vw] sm:min-w-0 sm:max-w-none overflow-hidden group hover:shadow-lg transition-shadow cursor-pointer flex-shrink-0"
-                onClick={() => router.push(`/allProducts/showcase/${event.key}`)}
-              >
-                <CardContent className="p-0">
-                  <div className="relative h-48 sm:h-56 flex items-center justify-center bg-gray-100">
-                    {/* Removed Image rendering */}
-                    <div className="absolute bottom-0 right-0 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-tl-2xl">
-                      <span className="font-medium text-gray-900">{event.name}</span>
+            {events.length > 0 ? (
+              events.map((event) => (
+                <div key={event._id} className="flex-shrink-0 w-64 sm:w-72 lg:w-80 bg-white rounded-lg shadow-md overflow-hidden">
+                  <div className="relative h-32 sm:h-40 lg:h-48">
+                    <Image
+                      src={event.image || "/placeholder.svg"}
+                      alt={event.name}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold text-gray-800 truncate">{event.name}</h3>
+                    <p className="text-gray-600 text-sm mt-1">{new Date(event.date).toLocaleDateString()}</p>
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                        onClick={() => router.push(`/allProducts/showcase`)}
+                      >
+                        Explore More
+                      </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-gray-500">No upcoming events at the moment. Check back later!</p>
+              </div>
+            )}
           </div>
         </section>
 
