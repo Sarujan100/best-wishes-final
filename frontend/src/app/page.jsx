@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import Footer from "./components/footer/page"
 import Navbar from "./components/navBar/page"
 import { useDispatch, useSelector } from "react-redux"
-import { getProducts } from "./actions/productAction"
+import { getProducts } from "./actions/productAction" 
 import { getCategories } from "./actions/categoryAction"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -354,6 +354,7 @@ export default function FancyCarousel() {
             ))}
           </div>
 
+
           {showMoreCategories && (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-4 mt-4">
               {uniqueCategories.slice(6).map((category, index) => (
@@ -378,7 +379,9 @@ export default function FancyCarousel() {
               ))}
             </div>
           )}
+
         </section>
+   
 
         {/* Hot Sales Section */}
         <section className="space-y-6">
