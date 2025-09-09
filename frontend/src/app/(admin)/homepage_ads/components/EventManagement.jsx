@@ -110,48 +110,6 @@ export default function EventManagement() {
     }
   };
 
-  const toggleEventStatus = async (id, currentStatus) => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ isActive: !currentStatus }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update event status");
-      }
-
-      const updatedEvent = await response.json();
-      setEvents(events.map((event) => (event._id === id ? updatedEvent.event : event)));
-    } catch (error) {
-      console.error("Error toggling event status:", error);
-    }
-  };
-
-  const toggleFeatured = async (id, currentStatus) => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ featured: !currentStatus }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update featured status");
-      }
-
-      const updatedEvent = await response.json();
-      setEvents(events.map((event) => (event._id === id ? updatedEvent.event : event)));
-    } catch (error) {
-      console.error("Error toggling featured status:", error);
-    }
-  };
-
   const EventForm = ({ event, onSave, onCancel }) => {
     const [formData, setFormData] = useState(
       event || {
@@ -353,17 +311,11 @@ export default function EventManagement() {
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                          <Switch
-                            checked={event.isActive}
-                            onCheckedChange={() => toggleEventStatus(event._id, event.isActive)}
-                          />
+                          <Switch checked={event.isActive} disabled />
                           <span className="text-sm">Active</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Switch
-                            checked={event.featured}
-                            onCheckedChange={() => toggleFeatured(event._id, event.featured)}
-                          />
+                          <Switch checked={event.featured} disabled />
                           <span className="text-sm">Featured</span>
                         </div>
                       </div>
