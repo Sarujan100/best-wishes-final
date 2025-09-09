@@ -10,6 +10,7 @@ import { Elements, CardElement, useElements, useStripe } from "@stripe/react-str
 import axios from "axios";
 import { toast, Toaster } from "sonner";
 import { clearCart } from "../../slices/cartSlice";
+import CollaborativeGiftModal from '../../modal/CollaborativeGiftModal/page';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 
@@ -81,7 +82,7 @@ export default function CartPaymentPage() {
     const { user } = useSelector((state) => state.userState);
     const cart = useSelector((state) => state.cartState.items);
     const [clientSecret, setClientSecret] = useState("");
-
+    const [isCollaborativeModalOpen, setIsCollaborativeModalOpen] = useState(false);
     useEffect(() => {
         if (!user) {
             toast.error('Please login to continue');
@@ -137,6 +138,9 @@ export default function CartPaymentPage() {
     const handleSuccess = () => {
         dispatch(clearCart());
     };
+
+    const openCollaborativeModal = () => setIsCollaborativeModalOpen(true);
+    const closeCollaborativeModal = () => setIsCollaborativeModalOpen(false);
 
     return (
         <>
@@ -194,7 +198,7 @@ export default function CartPaymentPage() {
                                 </button>
                                 {amount >= 50 && (
                                     <button
-                                        onClick={() => setIsCollabOpen(true)}
+                                        onClick={openCollaborativeModal}
                                         className='px-4 py-2 rounded-[8px] bg-[#822BE2] text-white font-semibold hover:bg-purple-600'
                                     >
                                         Gift Collaboration
@@ -218,6 +222,13 @@ export default function CartPaymentPage() {
                     </div>
                 </div>
                 <Toaster position="top-center" richColors closeButton />
+                <CollaborativeGiftModal
+                    isOpen={isCollaborativeModalOpen}
+                    onClose={closeCollaborativeModal}
+                    productName={topItem?.name}
+                    productPrice={topItem?.price}
+                    productId={topItem?._id}
+                />
             </div>
             <Footer />
         </>
