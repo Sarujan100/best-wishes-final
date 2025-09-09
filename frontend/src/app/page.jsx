@@ -448,12 +448,12 @@ export default function FancyCarousel() {
           </div>
 
           <div
-            className="flex flex-row gap-4 overflow-x-auto pb-2 -mx-4 px-4 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-6 sm:overflow-visible sm:mx-0 sm:px-0"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {events.length > 0 ? (
               events.map((event) => (
-                <div key={event._id} className="flex-shrink-0 w-64 sm:w-72 lg:w-80 bg-white rounded-lg shadow-md overflow-hidden">
+                <div key={event._id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
                   <div className="relative h-32 sm:h-40 lg:h-48">
                     <Image
                       src={event.image || "/placeholder.svg"}
@@ -462,17 +462,19 @@ export default function FancyCarousel() {
                       className="object-cover"
                     />
                   </div>
-                  <div className="p-4">
+                  <div className="p-4 flex-1 flex flex-col justify-between">
                     <h3 className="text-lg font-semibold text-gray-800 truncate">{event.name}</h3>
-                    <p className="text-gray-600 text-sm mt-1">{new Date(event.date).toLocaleDateString()}</p>
-                    <div className="flex gap-2 mt-2">
-                      <Button
-                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
-                        onClick={() => router.push(`/allProducts/showcase`)}
-                      >
-                        Explore More
-                      </Button>
-                    </div>
+                    <p className="text-gray-600 text-sm mt-1">
+                      <span className="animate-blink font-bold text-purple-600 bg-gradient-to-r from-pink-400 via-yellow-400 to-purple-400 bg-clip-text text-transparent">
+                        {new Date(event.date).toLocaleDateString()}
+                      </span>
+                    </p>
+                    <Button
+                      className="mt-4 bg-purple-600 hover:bg-purple-700 text-white"
+                      onClick={() => router.push(`/allProducts/showcase`)}
+                    >
+                      Explore More
+                    </Button>
                   </div>
                 </div>
               ))
@@ -708,6 +710,14 @@ export default function FancyCarousel() {
           .slick-next:before {
             font-size: 20px;
           }
+        }
+
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        .animate-blink {
+          animation: blink 1s infinite;
         }
       `}</style>
 
