@@ -16,7 +16,7 @@ import { addToCart } from '../../slices/cartSlice';
 import { AiFillStar, AiOutlineStar, AiTwotoneStar } from 'react-icons/ai';
 import axios from 'axios';
 import { toast, Toaster } from 'sonner';
-import CollaborativeGiftModal from '../../modal/CollaborativeGiftModal/page';
+import CollaborativePurchaseModal from '../../modal/CollaborativePurchaseModal/page';
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Footer from "../../components/footer/page"
@@ -131,9 +131,9 @@ function ProductDetailPage() {
 
   const openCollaborativeModal = () => setIsCollaborativeModalOpen(true);
   const closeCollaborativeModal = () => setIsCollaborativeModalOpen(false);
-  const acceptCollaborativeGuidelines = () => {
+  const handleCollaborativePurchase = (emails) => {
     setIsCollaborativeModalOpen(false);
-    toast.success("Guidelines accepted. Proceed to invite friends.");
+    toast.success("Collaborative purchase created! Invitations sent to participants.");
   };
 
   return (
@@ -399,13 +399,14 @@ function ProductDetailPage() {
 
 
 
-        <CollaborativeGiftModal
+        <CollaborativePurchaseModal
           isOpen={isCollaborativeModalOpen}
           onClose={closeCollaborativeModal}
-          onAccept={acceptCollaborativeGuidelines}
+          onAccept={handleCollaborativePurchase}
           productName={product?.name}
-          productPrice={product?.salePrice}
-          productId={product._id}
+          productPrice={product?.salePrice > 0 ? product.salePrice : product.retailPrice}
+          productID={product._id}
+          quantity={quantity}
         />
 
         <Toaster position="top-center" richColors closeButton />

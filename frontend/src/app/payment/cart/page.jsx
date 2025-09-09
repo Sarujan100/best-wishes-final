@@ -10,7 +10,7 @@ import { Elements, CardElement, useElements, useStripe } from "@stripe/react-str
 import axios from "axios";
 import { toast, Toaster } from "sonner";
 import { clearCart } from "../../slices/cartSlice";
-import CollaborativeGiftModal from '../../modal/CollaborativeGiftModal/page';
+import CollaborativePurchaseModal from '../../modal/CollaborativePurchaseModal/page';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 
@@ -98,6 +98,7 @@ export default function CartPaymentPage() {
             const price = p.salePrice > 0 ? p.salePrice : p.retailPrice;
             return {
                 productId: p._id,
+                _id: p._id, // Add _id for compatibility
                 name: p.name,
                 price,
                 quantity: i.quantity,
@@ -139,7 +140,12 @@ export default function CartPaymentPage() {
         dispatch(clearCart());
     };
 
-    const openCollaborativeModal = () => setIsCollaborativeModalOpen(true);
+    const openCollaborativeModal = () => {
+        console.log('Opening collaborative modal with topItem:', topItem);
+        console.log('Cart items:', cart);
+        console.log('Line items:', lineItems);
+        setIsCollaborativeModalOpen(true);
+    };
     const closeCollaborativeModal = () => setIsCollaborativeModalOpen(false);
 
     return (
@@ -222,12 +228,18 @@ export default function CartPaymentPage() {
                     </div>
                 </div>
                 <Toaster position="top-center" richColors closeButton />
-                <CollaborativeGiftModal
+                <CollaborativePurchaseModal
                     isOpen={isCollaborativeModalOpen}
                     onClose={closeCollaborativeModal}
+                    onAccept={(emails) => {
+                        setIsCollaborativeModalOpen(false);
+                        toast.success("Collaborative purchase created! Invitations sent to participants.");
+                    }}
                     productName={topItem?.name}
                     productPrice={topItem?.price}
-                    productId={topItem?._id}
+                    productID={topItem?._id}
+                    quantity={topItem?.quantity}
+                    
                 />
             </div>
             <Footer />
