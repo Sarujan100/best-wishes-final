@@ -6,7 +6,7 @@ import Image from "next/image"
 import "slick-carousel/slick/slick.css"
 import "slick-carousel/slick/slick-theme.css"
 import { FaFire } from "react-icons/fa6"
-import { Heart, Flame, ChevronRight } from "lucide-react"
+import { Heart, Flame, ChevronLeft, ChevronRight } from "lucide-react"
 import { FaRegClock } from "react-icons/fa"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -37,10 +37,13 @@ export default function FancyCarousel() {
   const [localCategories, setLocalCategories] = useState([]);
 
   const [heroSections, setHeroSections] = useState([]);
+  const [heroImages, setHeroImages] = useState([]);
   const [events, setEvents] = useState([]);
 
   const router = useRouter();
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl2 = process.env.NEXT_PUBLIC_API_URL_2;
 
   // Event data for Upcoming Events section
   const staticEvents = [
@@ -77,7 +80,7 @@ export default function FancyCarousel() {
   ];
 
   const [showMoreCategories, setShowMoreCategories] = useState(false);
-
+  const [sliderRef, setSliderRef] = useState(null);
 
   useEffect(() => {
     dispatch(getProducts())
@@ -87,7 +90,7 @@ export default function FancyCarousel() {
     // Fetch categories from backend
     const fetchCategories = async () => {
       try {
-        const res = await fetch("/api/categories");
+        const res = await fetch(`${apiUrl}/categories`);
         const data = await res.json();
         // If data is an array, use it directly; if wrapped in {data: []}, unwrap
         const cats = Array.isArray(data) ? data : data.data;
@@ -101,7 +104,7 @@ export default function FancyCarousel() {
     // Fetch hero sections from backend
     const fetchHeroSections = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/hero-sections/active");
+        const res = await fetch(`${apiUrl}/hero-sections/active`);
         const data = await res.json();
         if (data.success && data.data) {
           setHeroSections(data.data);
@@ -124,10 +127,26 @@ export default function FancyCarousel() {
       }
     };
 
+    // Fetch only images from HeroSection database
+    const fetchHeroImages = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/hero-sections/active`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          // Only extract image URLs
+          setHeroImages(data.data.map(item => item.image).filter(Boolean));
+        } else {
+          setHeroImages(["/1.jpg", "/2.jpg", "/3.jpg"]);
+        }
+      } catch (err) {
+        setHeroImages(["/1.jpg", "/2.jpg", "/3.jpg"]);
+      }
+    };
+
     // Fetch active events from backend
     const fetchActiveEvents = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/events?isActive=true");
+        const response = await fetch(`${apiUrl}/events?isActive=true`);
         const data = await response.json();
         console.log("API Response:", data); // Log the API response
         if (data.events && data.events.length > 0) {
@@ -145,6 +164,7 @@ export default function FancyCarousel() {
 
     fetchCategories();
     fetchHeroSections();
+    fetchHeroImages();
     fetchActiveEvents();
 
     fetchCategories();
@@ -253,14 +273,35 @@ export default function FancyCarousel() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-12">
         {/* Hero Carousel */}
         <div className="w-full h-[300px] sm:h-[400px] lg:h-[500px] relative rounded-xl overflow-hidden shadow-lg">
-          <Slider {...settings}>
-            {images.map((src, index) => (
+          {/* Custom Arrows - default style, no purple or gradient */}
+          <div className="absolute inset-0 flex items-center justify-between pointer-events-none">
+            <button
+              className="pointer-events-auto bg-white rounded-full p-2 shadow-lg hover:scale-105 transition ml-2"
+              onClick={() => sliderRef && sliderRef.slickPrev()}
+              aria-label="Previous Slide"
+              type="button"
+              style={{ zIndex: 20 }}
+            >
+              <ChevronLeft className="w-7 h-7 text-gray-700" />
+            </button>
+            <button
+              className="pointer-events-auto bg-white rounded-full p-2 shadow-lg hover:scale-105 transition mr-2"
+              onClick={() => sliderRef && sliderRef.slickNext()}
+              aria-label="Next Slide"
+              type="button"
+              style={{ zIndex: 20 }}
+            >
+              <ChevronRight className="w-7 h-7 text-gray-700" />
+            </button>
+          </div>
+          <Slider {...settings} ref={setSliderRef}>
+            {(heroImages.length > 0 ? heroImages : images).map((src, index) => (
               <div key={index} className="relative w-full h-[300px] sm:h-[400px] lg:h-[500px]">
                 <Image
                   src={src || "/placeholder.svg"}
                   alt={`Slide ${index}`}
                   fill
-                  className="object-cover"
+                  className="object-cover animate-slide"
                   priority={index === 0}
                 />
               </div>
@@ -312,6 +353,33 @@ export default function FancyCarousel() {
               </div>
             ))}
           </div>
+
+
+          {showMoreCategories && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-4 mt-4">
+              {uniqueCategories.slice(6).map((category, index) => (
+                <div 
+                  key={category._id || index} 
+                  className="flex flex-col items-center space-y-2 group cursor-pointer transform hover:scale-105 transition-all duration-300"
+                  onClick={() => handleCategoryClick(category.name)}
+                >
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-gray-200 overflow-hidden group-hover:border-purple-400 group-hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-purple-50 to-pink-50">
+                    <Image
+                      src={getCategoryImage(category)}
+                      alt={category.name}
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                  </div>
+                  <span className="text-xs sm:text-sm text-center text-gray-700 group-hover:text-purple-600 transition-colors font-medium">
+                    {category.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
         </section>
    
 
@@ -424,12 +492,12 @@ export default function FancyCarousel() {
           </div>
 
           <div
-            className="flex flex-row gap-4 overflow-x-auto pb-2 -mx-4 px-4 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-6 sm:overflow-visible sm:mx-0 sm:px-0"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {events.length > 0 ? (
               events.map((event) => (
-                <div key={event._id} className="flex-shrink-0 w-64 sm:w-72 lg:w-80 bg-white rounded-lg shadow-md overflow-hidden">
+                <div key={event._id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
                   <div className="relative h-32 sm:h-40 lg:h-48">
                     <Image
                       src={event.image || "/placeholder.svg"}
@@ -438,17 +506,19 @@ export default function FancyCarousel() {
                       className="object-cover"
                     />
                   </div>
-                  <div className="p-4">
+                  <div className="p-4 flex-1 flex flex-col justify-between">
                     <h3 className="text-lg font-semibold text-gray-800 truncate">{event.name}</h3>
-                    <p className="text-gray-600 text-sm mt-1">{new Date(event.date).toLocaleDateString()}</p>
-                    <div className="flex gap-2 mt-2">
-                      <Button
-                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
-                        onClick={() => router.push(`/allProducts/showcase`)}
-                      >
-                        Explore More
-                      </Button>
-                    </div>
+                    <p className="text-gray-600 text-sm mt-1">
+                      <span className="animate-blink font-bold text-purple-600 bg-gradient-to-r from-pink-400 via-yellow-400 to-purple-400 bg-clip-text text-transparent">
+                        {new Date(event.date).toLocaleDateString()}
+                      </span>
+                    </p>
+                    <Button
+                      className="mt-4 bg-purple-600 hover:bg-purple-700 text-white"
+                      onClick={() => router.push(`/allProducts/showcase`)}
+                    >
+                      Explore More
+                    </Button>
                   </div>
                 </div>
               ))
@@ -684,6 +754,25 @@ export default function FancyCarousel() {
           .slick-next:before {
             font-size: 20px;
           }
+        }
+
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        .animate-blink {
+          animation: blink 1s infinite;
+        }
+
+        @keyframes slide {
+          0% { transform: translateX(0); }
+          25% { transform: translateX(10px); }
+          50% { transform: translateX(0); }
+          75% { transform: translateX(-10px); }
+          100% { transform: translateX(0); }
+        }
+        .animate-slide {
+          animation: slide 2s infinite linear;
         }
       `}</style>
 
