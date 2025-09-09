@@ -35,11 +35,15 @@ export default function FancyCarousel() {
 
   const [loading, setLoading] = useState(true);
   const [localCategories, setLocalCategories] = useState([]);
+
+  const [heroSections, setHeroSections] = useState([]);
+  const [events, setEvents] = useState([]);
+
   const router = useRouter();
 
 
   // Event data for Upcoming Events section
-  const events = [
+  const staticEvents = [
     {
       name: "Father's Day",
       key: "fathers-day",
@@ -92,7 +96,59 @@ export default function FancyCarousel() {
         setLocalCategories([]);
       }
     };
+
+
+    // Fetch hero sections from backend
+    const fetchHeroSections = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/hero-sections/active");
+        const data = await res.json();
+        if (data.success && data.data) {
+          setHeroSections(data.data);
+        } else {
+          // Fallback to static images if no hero sections
+          setHeroSections([
+            { image: "/1.jpg", title: "Welcome", description: "Slide 1" },
+            { image: "/2.jpg", title: "Explore", description: "Slide 2" },
+            { image: "/3.jpg", title: "Discover", description: "Slide 3" }
+          ]);
+        }
+      } catch (err) {
+        console.error("Error fetching hero sections:", err);
+        // Fallback to static images
+        setHeroSections([
+          { image: "/1.jpg", title: "Welcome", description: "Slide 1" },
+          { image: "/2.jpg", title: "Explore", description: "Slide 2" },
+          { image: "/3.jpg", title: "Discover", description: "Slide 3" }
+        ]);
+      }
+    };
+
+    // Fetch active events from backend
+    const fetchActiveEvents = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/events?isActive=true");
+        const data = await response.json();
+        console.log("API Response:", data); // Log the API response
+        if (data.events && data.events.length > 0) {
+          const activeEvents = data.events.filter(event => event.isActive); // Filter active events
+          setEvents(activeEvents);
+        } else {
+          console.warn("No events found or API response invalid:", data);
+          setEvents([]);
+        }
+      } catch (error) {
+        console.error("Error fetching active events:", error);
+        setEvents([]);
+      }
+    };
+
     fetchCategories();
+    fetchHeroSections();
+    fetchActiveEvents();
+
+    fetchCategories();
+
   }, [dispatch])
 
   // Helper function to get product image
@@ -185,6 +241,10 @@ export default function FancyCarousel() {
     setShowMoreCategories(!showMoreCategories);
   };
 
+  // Ensure unique categories
+  const uniqueCategories = Array.from(new Set(categories.map(category => category.name)))
+    .map(name => categories.find(category => category.name === name));
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -222,11 +282,49 @@ export default function FancyCarousel() {
             </Button>
           </div>
 
+
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+            {(uniqueCategories.length > 0 ? uniqueCategories.slice(0, 6) : [
+              { name: "Balloons", image: "/balloon.svg" },
+              { name: "Mugs", image: "/mug.svg" },
+              { name: "Birthday Cards", image: "/birthday-invitation.svg" },
+              { name: "Home & Living", image: "/home.svg" },
+              { name: "Party Supplies", image: "/party.svg" },
+              { name: "Decorations", image: "/decoration.svg" },
+            ]).map((category, index) => (
+              <div 
+                key={category._id || index} 
+                className="flex flex-col items-center space-y-2 group cursor-pointer transform hover:scale-105 transition-all duration-300"
+                onClick={() => handleCategoryClick(category.name)}
+              >
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-gray-200 overflow-hidden group-hover:border-purple-400 group-hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-purple-50 to-pink-50">
+                  <Image
+                    src={getCategoryImage(category)}
+                    alt={category.name}
+                    width={80}
+                    height={80}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                </div>
+                <span className="text-xs sm:text-sm text-center text-gray-700 group-hover:text-purple-600 transition-colors font-medium">
+                  {category.name}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {showMoreCategories && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-4 mt-4">
+              {uniqueCategories.slice(6).map((category, index) => (
+                <div 
+                  key={category._id || index} 
+
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-4">
             {categories && categories.length > 0 ? (
               categories.slice(0, showMoreCategories ? categories.length : 6).map((category, index) => (
                 <div
                   key={category._id || index}
+
                   className="flex flex-col items-center space-y-2 group cursor-pointer transform hover:scale-105 transition-all duration-300"
                   onClick={() => handleCategoryClick(category.name)}
                 >
@@ -243,6 +341,11 @@ export default function FancyCarousel() {
                     {category.name}
                   </span>
                 </div>
+
+              ))}
+            </div>
+          )}
+
               ))
             ) : (
               // Fallback categories if database is empty
@@ -277,6 +380,7 @@ export default function FancyCarousel() {
               ))
             )}
           </div>
+
 
         </section>
 
@@ -392,22 +496,36 @@ export default function FancyCarousel() {
             className="flex flex-row gap-4 overflow-x-auto pb-2 -mx-4 px-4 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-6 sm:overflow-visible sm:mx-0 sm:px-0"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
-            {events.map((event) => (
-              <Card
-                key={event.key}
-                className="min-w-[220px] max-w-[90vw] sm:min-w-0 sm:max-w-none overflow-hidden group hover:shadow-lg transition-shadow cursor-pointer flex-shrink-0"
-                onClick={() => router.push(`/allProducts/showcase/${event.key}`)}
-              >
-                <CardContent className="p-0">
-                  <div className="relative h-48 sm:h-56 flex items-center justify-center bg-gray-100">
-                    {/* Removed Image rendering */}
-                    <div className="absolute bottom-0 right-0 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-tl-2xl">
-                      <span className="font-medium text-gray-900">{event.name}</span>
+            {events.length > 0 ? (
+              events.map((event) => (
+                <div key={event._id} className="flex-shrink-0 w-64 sm:w-72 lg:w-80 bg-white rounded-lg shadow-md overflow-hidden">
+                  <div className="relative h-32 sm:h-40 lg:h-48">
+                    <Image
+                      src={event.image || "/placeholder.svg"}
+                      alt={event.name}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold text-gray-800 truncate">{event.name}</h3>
+                    <p className="text-gray-600 text-sm mt-1">{new Date(event.date).toLocaleDateString()}</p>
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                        onClick={() => router.push(`/allProducts/showcase`)}
+                      >
+                        Explore More
+                      </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-gray-500">No upcoming events at the moment. Check back later!</p>
+              </div>
+            )}
           </div>
         </section>
 
