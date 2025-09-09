@@ -42,16 +42,25 @@ export default function EventManagement() {
 
   const filteredEvents = events.filter((event) => event.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  const toggleEventStatus = (id) => {
-    setEvents(events.map((event) => (event.id === id ? { ...event, isActive: !event.isActive } : event)));
-  };
+  const deleteEvent = async (id) => {
+    if (!id) {
+      console.error("Event ID is undefined. Cannot delete event.");
+      return;
+    }
 
-  const toggleFeatured = (id) => {
-    setEvents(events.map((event) => (event.id === id ? { ...event, featured: !event.featured } : event)));
-  };
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}`, {
+        method: "DELETE",
+      });
 
-  const deleteEvent = (id) => {
-    setEvents(events.filter((event) => event.id !== id));
+      if (!response.ok) {
+        throw new Error("Failed to delete event");
+      }
+
+      setEvents(events.filter((event) => event.id !== id));
+    } catch (error) {
+      console.error("Error deleting event:", error);
+    }
   };
 
   const handleSaveEvent = async (event) => {
@@ -72,6 +81,74 @@ export default function EventManagement() {
       setEvents([...events, savedEvent.event]);
     } catch (error) {
       console.error("Error saving event:", error);
+    }
+  };
+
+  const handleUpdateEvent = async (updatedEvent) => {
+    if (!updatedEvent._id) {
+      console.error("Event ID is missing. Cannot update event.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${updatedEvent._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedEvent),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update event");
+      }
+
+      const data = await response.json();
+      setEvents(events.map((event) => (event._id === data.event._id ? data.event : event)));
+    } catch (error) {
+      console.error("Error updating event:", error);
+    }
+  };
+
+  const toggleEventStatus = async (id, currentStatus) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isActive: !currentStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update event status");
+      }
+
+      const updatedEvent = await response.json();
+      setEvents(events.map((event) => (event._id === id ? updatedEvent.event : event)));
+    } catch (error) {
+      console.error("Error toggling event status:", error);
+    }
+  };
+
+  const toggleFeatured = async (id, currentStatus) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ featured: !currentStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update featured status");
+      }
+
+      const updatedEvent = await response.json();
+      setEvents(events.map((event) => (event._id === id ? updatedEvent.event : event)));
+    } catch (error) {
+      console.error("Error toggling featured status:", error);
     }
   };
 
@@ -127,7 +204,7 @@ export default function EventManagement() {
           <Input
             id="date"
             type="date"
-            value={formData.date}
+            value={formData.date ? new Date(formData.date).toISOString().split('T')[0] : ""}
             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
             required
           />
@@ -269,16 +346,24 @@ export default function EventManagement() {
                     <div>
                       <h3 className="font-semibold text-lg">{event.name}</h3>
                       <p className="text-sm text-gray-600 mt-2">{event.description}</p>
-                      <p className="text-sm font-medium text-purple-600">{new Date(event.date).toLocaleDateString()}</p>
+                      <p className="text-sm font-medium text-purple-600">
+                        {event.date ? new Date(event.date).toLocaleDateString() : "Date not available"}
+                      </p>
                     </div>
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                          <Switch checked={event.isActive} onCheckedChange={() => toggleEventStatus(event.id)} />
+                          <Switch
+                            checked={event.isActive}
+                            onCheckedChange={() => toggleEventStatus(event._id, event.isActive)}
+                          />
                           <span className="text-sm">Active</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Switch checked={event.featured} onCheckedChange={() => toggleFeatured(event.id)} />
+                          <Switch
+                            checked={event.featured}
+                            onCheckedChange={() => toggleFeatured(event._id, event.featured)}
+                          />
                           <span className="text-sm">Featured</span>
                         </div>
                       </div>
@@ -298,9 +383,10 @@ export default function EventManagement() {
                           <EventForm
                             event={event}
                             onSave={(updatedEvent) => {
-                              setEvents(events.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)));
+                              handleUpdateEvent(updatedEvent);
+                              setIsAddDialogOpen(false);
                             }}
-                            onCancel={() => {}}
+                            onCancel={() => setIsAddDialogOpen(false)}
                           />
                         </DialogContent>
                       </Dialog>
@@ -308,7 +394,14 @@ export default function EventManagement() {
                         variant="outline"
                         size="sm"
                         className="text-red-600 hover:text-red-700 bg-transparent"
-                        onClick={() => deleteEvent(event.id)}
+                        onClick={() => {
+                          console.log("Deleting event:", event);
+                          if (event._id) {
+                            deleteEvent(event._id);
+                          } else {
+                            console.error("Event ID is missing. Cannot delete event.");
+                          }
+                        }}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
