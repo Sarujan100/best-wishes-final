@@ -8,6 +8,7 @@ require("dotenv").config();
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const deliveryRoutes = require('./routes/deliveryRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
@@ -40,6 +41,7 @@ app.use(cookieParser());
 app.use('/api', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/delivery', deliveryRoutes);
 app.use('/api/payments', paymentRoutes);
 
 app.use('/api', eventRoutes);
@@ -52,5 +54,3 @@ app.use('/api', heroSectionRoutes);
 
 
 module.exports = app;
-
-//hellow

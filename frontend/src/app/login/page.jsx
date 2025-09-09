@@ -26,7 +26,7 @@ function Page() {
 
     try {
       const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/login`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/login`,
         { email, password },
         { withCredentials: true }
       );
@@ -50,7 +50,7 @@ function Page() {
       } else if (userData.role === 'inventoryManager') {
         router.push('/inventory/dashboard');
       } else if (userData.role === 'deliveryStaff') {
-        router.push('/delivery/dashboard');
+        router.push('/deliverystaff');
       } else {
         router.push('/');
       }

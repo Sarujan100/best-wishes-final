@@ -5,7 +5,8 @@ import { userLogin } from '../slices/userSlice';
 
 export const getProducts = () => async (dispatch) => {
    try {
-     const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/getAllProducts`);
+     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+     const response = await axios.get(`${API_URL}/getAllProducts`);
            console.log('Product get success:', response.data);
            dispatch(setAllProducts(response.data));  // save user to redux
    } catch (error) {
@@ -16,7 +17,8 @@ export const getProducts = () => async (dispatch) => {
 export const fetchUserProfile = () => async (dispatch) => {
   try {
     console.log('Fetching user profile...');
-    const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/myprofile`, { withCredentials: true });
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+    const response = await axios.get(`${API_URL}/myprofile`, { withCredentials: true });
     
     if (response.data && response.data.user) {
 
