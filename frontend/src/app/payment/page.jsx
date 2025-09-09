@@ -126,8 +126,10 @@ export default function PaymentPage() {
 	const handleCollaborativePurchase = (emails) => {
 		setShowCollaborativeModal(false);
 		toast.success("Collaborative purchase created! Invitations sent to participants.");
-		// Optionally redirect to dashboard
-		// router.push("/dashboard/collaborative-purchases");
+		// Navigate to dashboard after a short delay
+		setTimeout(() => {
+			router.push("/dashboard/collaborative-purchases");
+		}, 1500);
 	};
 
 	// Debug logging
@@ -257,6 +259,8 @@ export default function PaymentPage() {
 					isOpen={showCollaborativeModal}
 					onClose={() => setShowCollaborativeModal(false)}
 					onAccept={handleCollaborativePurchase}
+					// Single product support
+					isMultiProduct={false}
 					productName={product?.name || ""}
 					productPrice={amount}
 					productID={product._id || productId}

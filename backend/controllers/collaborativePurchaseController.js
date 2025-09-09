@@ -21,7 +21,7 @@ const createCollaborativePurchase = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized: User not found in request' });
     }
 
-    const { productID, productId, quantity, participants } = req.body;
+    const { productID, productId, quantity, participants, products, isMultiProduct } = req.body;
     
     // Support both productID and productId for backward compatibility
     const finalProductId = productID || productId;
@@ -32,16 +32,23 @@ const createCollaborativePurchase = async (req, res) => {
       finalProductId,
       quantity,
       participants,
+      products,
+      isMultiProduct,
       productIdType: typeof finalProductId,
-      productIdValid: mongoose.Types.ObjectId.isValid(finalProductId)
+      productIdValid: finalProductId ? mongoose.Types.ObjectId.isValid(finalProductId) : false
     });
 
-    if (!finalProductId) {
-      return res.status(400).json({ message: 'ProductId is required' });
-    }
-
-    if (!mongoose.Types.ObjectId.isValid(finalProductId)) {
-      return res.status(400).json({ message: 'Invalid productId format' });
+    // Handle multi-product vs single product
+    if (isMultiProduct && products && Array.isArray(products) && products.length > 0) {
+      // Multi-product collaborative purchase
+      console.log('Processing multi-product collaborative purchase with', products.length, 'products');
+    } else if (finalProductId) {
+      // Single product collaborative purchase (legacy)
+      if (!mongoose.Types.ObjectId.isValid(finalProductId)) {
+        return res.status(400).json({ message: 'Invalid productId format' });
+      }
+    } else {
+      return res.status(400).json({ message: 'Either productId or products array is required' });
     }
 
     if (!participants || !Array.isArray(participants) || participants.length === 0 || participants.length > 3) {
@@ -55,59 +62,154 @@ const createCollaborativePurchase = async (req, res) => {
       }
     }
 
-    // Get product details
-    const product = await Product.findById(finalProductId);
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
+    let productDetails, totalAmount, shareAmount, collaborativePurchaseData, processedProducts;
 
-    const productPrice = product.salePrice > 0 ? product.salePrice : product.retailPrice;
-    const shippingCost = 10; // Fixed shipping cost
-    const totalAmount = (productPrice * quantity) + shippingCost;
-    const participantCount = participants.length + 1; // +1 for the creator
-    const shareAmount = Math.round((totalAmount / participantCount) * 100) / 100; // Round to 2 decimal places
+    if (isMultiProduct && products && Array.isArray(products) && products.length > 0) {
+      // Multi-product collaborative purchase
+      console.log('Processing multi-product collaborative purchase');
+      
+      // Validate all products exist
+      const productIds = products.map(p => p.productId || p._id);
+      const existingProducts = await Product.find({ _id: { $in: productIds } });
+      
+      if (existingProducts.length !== products.length) {
+        return res.status(404).json({ message: 'One or more products not found' });
+      }
 
-    const deadline = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); // 3 days from now
+      // Calculate total amount for all products
+      let subtotal = 0;
+      const processedProducts = products.map(item => {
+        const product = existingProducts.find(p => p._id.toString() === (item.productId || item._id).toString());
+        const productPrice = product.salePrice > 0 ? product.salePrice : product.retailPrice;
+        const itemTotal = productPrice * item.quantity;
+        subtotal += itemTotal;
+        
+        return {
+          product: product._id,
+          productName: product.name,
+          productPrice: productPrice,
+          quantity: item.quantity,
+          image: (product.images && (product.images[0]?.url || product.images[0])) || null
+        };
+      });
 
-    // Generate unique payment links for each participant
-    const participantsWithLinks = participants.map(email => ({
-      email: email.trim().toLowerCase(),
-      paymentLink: generatePaymentLink(),
-    }));
+      const shippingCost = 10; // Fixed shipping cost
+      totalAmount = subtotal + shippingCost;
+      const participantCount = participants.length + 1; // +1 for the creator
+      shareAmount = Math.round((totalAmount / participantCount) * 100) / 100;
 
-    const collaborativePurchase = await CollaborativePurchase.create({
-      product: finalProductId,
-      productName: product.name,
-      productPrice: productPrice,
-      quantity,
-      totalAmount,
-      shareAmount,
-      createdBy: req.user._id,
-      participants: participantsWithLinks,
-      deadline,
-    });
+      collaborativePurchaseData = {
+        products: processedProducts,
+        isMultiProduct: true,
+        totalAmount,
+        shareAmount,
+        createdBy: req.user._id,
+        participants: participants.map(email => ({
+          email: email.trim().toLowerCase(),
+          paymentLink: generatePaymentLink(),
+        })),
+        deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+      };
 
-    // Send invitation emails to participants
-    for (const participant of participantsWithLinks) {
-      await sendInvitationEmail(participant.email, participant.paymentLink, {
+    } else {
+      // Single product collaborative purchase (legacy)
+      console.log('Processing single product collaborative purchase');
+      
+      const product = await Product.findById(finalProductId);
+      if (!product) {
+        return res.status(404).json({ message: 'Product not found' });
+      }
+
+      const productPrice = product.salePrice > 0 ? product.salePrice : product.retailPrice;
+      const shippingCost = 10; // Fixed shipping cost
+      totalAmount = (productPrice * quantity) + shippingCost;
+      const participantCount = participants.length + 1; // +1 for the creator
+      shareAmount = Math.round((totalAmount / participantCount) * 100) / 100;
+
+      // Create processedProducts for single product (for email consistency)
+      processedProducts = [{
+        product: product._id,
         productName: product.name,
         productPrice: productPrice,
+        quantity: quantity,
+        image: (product.images && (product.images[0]?.url || product.images[0])) || null
+      }];
+
+      collaborativePurchaseData = {
+        product: finalProductId,
+        productName: product.name,
+        productPrice: productPrice,
+        quantity,
+        isMultiProduct: false,
+        totalAmount,
         shareAmount,
-        deadline,
+        createdBy: req.user._id,
+        participants: participants.map(email => ({
+          email: email.trim().toLowerCase(),
+          paymentLink: generatePaymentLink(),
+        })),
+        deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+      };
+    }
+
+    const collaborativePurchase = await CollaborativePurchase.create(collaborativePurchaseData);
+
+    // Send invitation emails to participants
+    for (const participant of collaborativePurchaseData.participants) {
+      const emailData = {
+        shareAmount,
+        deadline: collaborativePurchaseData.deadline,
         createdBy: req.user,
         collaborativePurchaseId: collaborativePurchase._id,
-      });
+      };
+
+      if (isMultiProduct && products && products.length > 0) {
+        // Multi-product email data
+        console.log('Setting email data for multi-product:', {
+          processedProducts: processedProducts,
+          processedProductsLength: processedProducts?.length,
+          isMultiProduct: true,
+          totalAmount: totalAmount
+        });
+        emailData.products = processedProducts || [];
+        emailData.isMultiProduct = true;
+        emailData.totalAmount = totalAmount;
+      } else {
+        // Single product email data (legacy)
+        console.log('Setting email data for single product:', {
+          productName: collaborativePurchaseData.productName,
+          productPrice: collaborativePurchaseData.productPrice,
+          isMultiProduct: false
+        });
+        emailData.productName = collaborativePurchaseData.productName;
+        emailData.productPrice = collaborativePurchaseData.productPrice;
+        emailData.isMultiProduct = false;
+      }
+
+      await sendInvitationEmail(participant.email, participant.paymentLink, emailData);
     }
 
     // Send confirmation email to creator
-    await sendCreatorConfirmationEmail(req.user.email, {
-      productName: product.name,
-      productPrice: productPrice,
+    const creatorEmailData = {
       shareAmount,
-      deadline,
-      participants: participantsWithLinks,
+      deadline: collaborativePurchaseData.deadline,
+      participants: collaborativePurchaseData.participants.map(p => p.email),
       collaborativePurchaseId: collaborativePurchase._id,
-    });
+    };
+
+    if (isMultiProduct && products && products.length > 0) {
+      // Multi-product creator email data
+      creatorEmailData.products = processedProducts;
+      creatorEmailData.isMultiProduct = true;
+      creatorEmailData.totalAmount = totalAmount;
+    } else {
+      // Single product creator email data (legacy)
+      creatorEmailData.productName = collaborativePurchaseData.productName;
+      creatorEmailData.productPrice = collaborativePurchaseData.productPrice;
+      creatorEmailData.isMultiProduct = false;
+    }
+
+    await sendCreatorConfirmationEmail(req.user.email, creatorEmailData);
 
     res.status(201).json({ 
       success: true, 
@@ -377,7 +479,18 @@ const createOrderFromCollaborativePurchase = async (collaborativePurchase) => {
 };
 
 const sendInvitationEmail = async (email, paymentLink, data) => {
-  const { productName, productPrice, shareAmount, deadline, createdBy, collaborativePurchaseId } = data;
+  const { productName, productPrice, shareAmount, deadline, createdBy, collaborativePurchaseId, products, isMultiProduct, totalAmount } = data;
+  
+  console.log('sendInvitationEmail received data:', {
+    email,
+    paymentLink,
+    isMultiProduct,
+    products: products,
+    productsLength: products?.length,
+    productName,
+    productPrice,
+    totalAmount
+  });
   
   await transporter.sendMail({
     from: `"BEST WISHES" <${process.env.EMAIL}>`,
@@ -405,8 +518,18 @@ const sendInvitationEmail = async (email, paymentLink, data) => {
                     <td style="font-size: 16px; color: #333;">
                       <p style="margin: 0 0 10px;">Hi there 👋,</p>
                       <p style="margin: 0 0 10px;">You've been invited by <strong>${createdBy.firstName || createdBy.email}</strong> to participate in a collaborative purchase:</p>
-                      <p style="margin: 0 0 10px;"><strong>${productName}</strong></p>
-                      <p style="margin: 0 0 10px;">Total Price: <strong>$${productPrice.toFixed(2)}</strong></p>
+                      ${isMultiProduct && products && products.length > 0 ? `
+                        <p style="margin: 0 0 10px;"><strong>${products.length} Products</strong></p>
+                        <div style="margin: 0 0 10px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                          ${products.map(item => `
+                            <p style="margin: 0 0 5px; font-size: 14px;">• ${item.productName} (Qty: ${item.quantity}) - $${(item.productPrice * item.quantity).toFixed(2)}</p>
+                          `).join('')}
+                        </div>
+                        <p style="margin: 0 0 10px;">Total Price: <strong>$${totalAmount ? totalAmount.toFixed(2) : '0.00'}</strong></p>
+                      ` : `
+                        <p style="margin: 0 0 10px;"><strong>${productName || 'Product'}</strong></p>
+                        <p style="margin: 0 0 10px;">Total Price: <strong>$${productPrice ? productPrice.toFixed(2) : '0.00'}</strong></p>
+                      `}
                       <p style="margin: 0 0 10px;">Your Share: <strong>$${shareAmount.toFixed(2)}</strong></p>
                       <p style="margin: 0 0 20px;">Deadline: <strong>${deadline.toDateString()}</strong></p>
                     </td>
@@ -444,7 +567,7 @@ const sendInvitationEmail = async (email, paymentLink, data) => {
 };
 
 const sendCreatorConfirmationEmail = async (email, data) => {
-  const { productName, productPrice, shareAmount, deadline, participants, collaborativePurchaseId } = data;
+  const { productName, productPrice, shareAmount, deadline, participants, collaborativePurchaseId, products, isMultiProduct, totalAmount } = data;
   
   await transporter.sendMail({
     from: `"BEST WISHES" <${process.env.EMAIL}>`,
@@ -472,8 +595,18 @@ const sendCreatorConfirmationEmail = async (email, data) => {
                     <td style="font-size: 16px; color: #333;">
                       <p style="margin: 0 0 10px;">Hello!</p>
                       <p style="margin: 0 0 10px;">Your collaborative purchase has been created successfully:</p>
-                      <p style="margin: 0 0 10px;"><strong>${productName}</strong></p>
-                      <p style="margin: 0 0 10px;">Total Price: <strong>$${productPrice.toFixed(2)}</strong></p>
+                      ${isMultiProduct && products && products.length > 0 ? `
+                        <p style="margin: 0 0 10px;"><strong>${products.length} Products</strong></p>
+                        <div style="margin: 0 0 10px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                          ${products.map(item => `
+                            <p style="margin: 0 0 5px; font-size: 14px;">• ${item.productName} (Qty: ${item.quantity}) - $${(item.productPrice * item.quantity).toFixed(2)}</p>
+                          `).join('')}
+                        </div>
+                        <p style="margin: 0 0 10px;">Total Price: <strong>$${totalAmount ? totalAmount.toFixed(2) : '0.00'}</strong></p>
+                      ` : `
+                        <p style="margin: 0 0 10px;"><strong>${productName || 'Product'}</strong></p>
+                        <p style="margin: 0 0 10px;">Total Price: <strong>$${productPrice ? productPrice.toFixed(2) : '0.00'}</strong></p>
+                      `}
                       <p style="margin: 0 0 10px;">Your Share: <strong>$${shareAmount.toFixed(2)}</strong></p>
                       <p style="margin: 0 0 10px;">Participants: <strong>${participants.length + 1}</strong></p>
                       <p style="margin: 0 0 20px;">Deadline: <strong>${deadline.toDateString()}</strong></p>

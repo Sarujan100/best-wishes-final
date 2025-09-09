@@ -235,11 +235,14 @@ export default function CartPaymentPage() {
                         setIsCollaborativeModalOpen(false);
                         toast.success("Collaborative purchase created! Invitations sent to participants.");
                     }}
+                    // Multi-product support
+                    isMultiProduct={lineItems && lineItems.length > 1}
+                    products={lineItems}
+                    // Single product support (legacy)
                     productName={topItem?.name}
                     productPrice={topItem?.price}
                     productID={topItem?._id}
                     quantity={topItem?.quantity}
-                    
                 />
             </div>
             <Footer />

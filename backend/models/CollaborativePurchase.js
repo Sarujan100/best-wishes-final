@@ -27,7 +27,7 @@ const ParticipantSchema = new mongoose.Schema({
   }
 });
 
-const CollaborativePurchaseSchema = new mongoose.Schema({
+const ProductItemSchema = new mongoose.Schema({
   product: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
@@ -44,6 +44,39 @@ const CollaborativePurchaseSchema = new mongoose.Schema({
   quantity: {
     type: Number,
     default: 1,
+  },
+  image: {
+    type: String,
+  }
+});
+
+const CollaborativePurchaseSchema = new mongoose.Schema({
+  // Support both single product (legacy) and multiple products
+  product: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    required: false, // Made optional for multi-product support
+  },
+  productName: {
+    type: String,
+    required: false, // Made optional for multi-product support
+  },
+  productPrice: {
+    type: Number,
+    required: false, // Made optional for multi-product support
+  },
+  quantity: {
+    type: Number,
+    default: 1,
+  },
+  // New multi-product support
+  products: {
+    type: [ProductItemSchema],
+    default: [],
+  },
+  isMultiProduct: {
+    type: Boolean,
+    default: false,
   },
   totalAmount: {
     type: Number,

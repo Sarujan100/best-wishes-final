@@ -134,6 +134,10 @@ function ProductDetailPage() {
   const handleCollaborativePurchase = (emails) => {
     setIsCollaborativeModalOpen(false);
     toast.success("Collaborative purchase created! Invitations sent to participants.");
+    // Navigate to dashboard after a short delay
+    setTimeout(() => {
+      router.push("/dashboard/collaborative-purchases");
+    }, 1500);
   };
 
   return (
@@ -403,6 +407,8 @@ function ProductDetailPage() {
           isOpen={isCollaborativeModalOpen}
           onClose={closeCollaborativeModal}
           onAccept={handleCollaborativePurchase}
+          // Single product support
+          isMultiProduct={false}
           productName={product?.name}
           productPrice={product?.salePrice > 0 ? product.salePrice : product.retailPrice}
           productID={product._id}

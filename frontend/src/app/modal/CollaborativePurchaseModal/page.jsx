@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { FaRegTrashAlt } from "react-icons/fa";
 import { IoWarningOutline } from "react-icons/io5";
 import { useSelector } from "react-redux";
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -12,6 +13,10 @@ export default function CollaborativePurchaseModal({
   isOpen, 
   onClose, 
   onAccept, 
+  // Multi-product support
+  isMultiProduct = false,
+  products = [],
+  // Single product support (legacy)
   productName, 
   productPrice,
   productID,
@@ -20,17 +25,52 @@ export default function CollaborativePurchaseModal({
   const [isChecked, setIsChecked] = useState(false);
   const [emails, setEmails] = useState(['']);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   // Debug logging
   useEffect(() => {
     console.log('CollaborativePurchaseModal props:', {
       isOpen,
+      isMultiProduct,
+      products,
       productName,
       productPrice,
       productID,
       quantity
     });
-  }, [isOpen, productName, productPrice, productID, quantity]);
+  }, [isOpen, isMultiProduct, products, productName, productPrice, productID, quantity]);
+
+  // Calculate display data based on single vs multi-product
+  const displayData = React.useMemo(() => {
+    if (isMultiProduct && products && products.length > 0) {
+      const totalAmount = products.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const shippingCost = 10;
+      const finalTotal = totalAmount + shippingCost;
+      
+      return {
+        isMultiProduct: true,
+        products: products,
+        totalAmount: finalTotal,
+        itemCount: products.length,
+        displayName: `${products.length} items`
+      };
+    } else {
+      const productPrice = productPrice || 0;
+      const quantity = quantity || 1;
+      const shippingCost = 10;
+      const finalTotal = (productPrice * quantity) + shippingCost;
+      
+      return {
+        isMultiProduct: false,
+        productName: productName || 'Product',
+        productPrice: productPrice,
+        quantity: quantity,
+        totalAmount: finalTotal,
+        itemCount: 1,
+        displayName: productName || 'Product'
+      };
+    }
+  }, [isMultiProduct, products, productName, productPrice, quantity]);
 
   const { user } = useSelector(state => state.userState);
   const selfEmailIncluded = emails.some(email => email.trim().toLowerCase() === user?.email?.toLowerCase());
@@ -80,23 +120,51 @@ export default function CollaborativePurchaseModal({
     ) {
       setLoading(true);
       try {
-        console.log('Creating collaborative purchase with:', {
-          productID,
-          quantity,
-          participants: emails.map(e => e.trim()).filter(e => e)
-        });
+        const participants = emails.map(e => e.trim()).filter(e => e);
+        
+        let requestData;
+        
+        if (displayData.isMultiProduct) {
+          // Multi-product request
+          console.log('Creating multi-product collaborative purchase with:', {
+            isMultiProduct: true,
+            products: displayData.products,
+            participants
+          });
 
-        if (!productID) {
-          toast.error('Product ID is missing. Please try again.');
-          setLoading(false);
-          return;
+          requestData = {
+            isMultiProduct: true,
+            products: displayData.products.map(item => ({
+              productId: item._id || item.productId,
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity,
+              image: item.image
+            })),
+            participants
+          };
+        } else {
+          // Single product request (legacy)
+          console.log('Creating single product collaborative purchase with:', {
+            productID,
+            quantity: displayData.quantity,
+            participants
+          });
+
+          if (!productID) {
+            toast.error('Product ID is missing. Please try again.');
+            setLoading(false);
+            return;
+          }
+
+          requestData = {
+            productID,
+            quantity: displayData.quantity,
+            participants
+          };
         }
 
-        const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/collaborative-purchases`, {
-          productID,
-          quantity,
-          participants: emails.map(e => e.trim()).filter(e => e)
-        }, {
+        const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/collaborative-purchases`, requestData, {
           withCredentials: true
         });
 
@@ -105,6 +173,11 @@ export default function CollaborativePurchaseModal({
         setEmails(['']);
 
         toast.success(res.data.message || 'Collaborative purchase created successfully');
+        
+        // Navigate to collaborative purchases dashboard after a short delay
+        setTimeout(() => {
+          router.push('/dashboard/collaborative-purchases');
+        }, 1000);
         
       } catch (err) {
         console.error('Error creating collaborative purchase:', err.response?.data);
@@ -116,7 +189,7 @@ export default function CollaborativePurchaseModal({
   };
 
   const participantsCount = 1 + emails.length;
-  const shareAmount = (productPrice / participantsCount).toFixed(2);
+  const shareAmount = (displayData.totalAmount / participantsCount).toFixed(2);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex justify-center items-center p-4">
@@ -128,12 +201,28 @@ export default function CollaborativePurchaseModal({
         <h2 className="text-2xl font-bold text-purple-700 mb-4">🛒 Collaborative Purchase</h2>
 
         <div className="mb-6 text-gray-700 border border-purple-500 rounded p-4 space-y-1">
-          <p><strong>Product:</strong> <span className='text-purple-500'>{productName.length > 35 ? productName.slice(0, 35) + '...' : productName}</span></p>
-          <p><strong>Quantity:</strong> <span className='text-purple-500'>{quantity}</span></p>
-          <p><strong>Total Price:</strong> <span className='text-purple-500'>${productPrice.toFixed(2)}</span></p>
+          {displayData.isMultiProduct ? (
+            <>
+              <p><strong>Items:</strong> <span className='text-purple-500'>{displayData.itemCount} products</span></p>
+              <p><strong>Total Price:</strong> <span className='text-purple-500'>${displayData.totalAmount.toFixed(2)}</span></p>
+              <div className="mt-2">
+                <p className="font-medium text-sm text-gray-600 mb-1">Products included:</p>
+                {displayData.products.map((item, index) => (
+                  <p key={index} className="text-sm text-gray-500 ml-2">
+                    • {item.name} (Qty: {item.quantity}) - ${(item.price * item.quantity).toFixed(2)}
+                  </p>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <p><strong>Product:</strong> <span className='text-purple-500'>{displayData.displayName.length > 35 ? displayData.displayName.slice(0, 35) + '...' : displayData.displayName}</span></p>
+              <p><strong>Quantity:</strong> <span className='text-purple-500'>{displayData.quantity}</span></p>
+              <p><strong>Total Price:</strong> <span className='text-purple-500'>${displayData.totalAmount.toFixed(2)}</span></p>
+            </>
+          )}
           <p><strong>Participants:</strong> <span className='text-purple-500'>{participantsCount}</span></p>
           <p><strong>Each pays:</strong> <span className='text-purple-500'>${shareAmount}</span></p>
-          <p><strong>Product Id:</strong> <span className='text-purple-500'>${productID}</span></p>
         </div>
 
         <ul className="list-disc list-inside text-gray-700 space-y-2 text-sm mb-6">
