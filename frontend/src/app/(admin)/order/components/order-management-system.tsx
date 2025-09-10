@@ -46,10 +46,12 @@ interface OrderItem {
 
 interface User {
   _id: string
-  name: string
+  name?: string
   email: string
   phone: string
   address: string
+  firstName?: string
+  lastName?: string
 }
 
 interface ApiOrderItem {
@@ -164,7 +166,6 @@ export function OrderManagementSystem() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [activeTab, setActiveTab] = useState("accepted")
   const [expandedOrders, setExpandedOrders] = useState<string[]>([])
-  const [selectedItems, setSelectedItems] = useState([])
   const [internalNotes, setInternalNotes] = useState<Record<string, string>>({})
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
 
@@ -365,6 +366,13 @@ export function OrderManagementSystem() {
     const fetchAllOrders = async () => {
       try {
         const response = await axios.get("http://localhost:5000/api/orders/all")
+        console.log('API Response:', response.data.orders);
+
+        // Debugging: Log each user object to verify firstName and lastName
+        response.data.orders.forEach((order: ApiOrder) => {
+          console.log('User Object:', order.user);
+        });
+
         const ordersData: Order[] = response.data.orders.map((order: ApiOrder) => ({
           id: order._id,
           _id: order._id,
@@ -395,7 +403,7 @@ export function OrderManagementSystem() {
           orderId: order._id,
           priority: 'normal',
           orderSource: 'web',
-          customerName: order.user?.name || 'N/A',
+          customerName: `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim() || 'Unknown Customer',
           customerPhone: order.user?.phone || 'N/A',
           customerEmail: order.user?.email || 'N/A',
           customerNotes: '',
