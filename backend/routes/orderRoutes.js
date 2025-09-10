@@ -1,5 +1,5 @@
 const express = require('express');
-const { getUserOrderHistory, createOrder } = require('../controllers/orderController');
+const { getUserOrderHistory, createOrder, getAllOrders } = require('../controllers/orderController');
 const { isAuthenticated } = require('../middleware/authMiddleware');
 const router = express.Router();
 
@@ -8,5 +8,8 @@ router.get('/history', isAuthenticated, getUserOrderHistory);
 
 // Create order after payment success
 router.post('/', isAuthenticated, createOrder);
+
+// Get all orders for admin
+router.get('/all', getAllOrders);
 
 module.exports = router;

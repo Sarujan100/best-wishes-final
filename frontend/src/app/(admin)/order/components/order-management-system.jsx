@@ -1,6 +1,7 @@
 "use client"
 
-import React from "react"
+import React, { useEffect } from "react"
+import axios from "axios"
 
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -412,6 +413,19 @@ export function OrderManagementSystem() {
       printWindow.print()
     }
   }
+
+  useEffect(() => {
+    const fetchAllOrders = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/orders/all")
+        console.log("All Orders:", response.data.orders)
+      } catch (error) {
+        console.error("Error fetching all orders:", error)
+      }
+    }
+
+    fetchAllOrders()
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">

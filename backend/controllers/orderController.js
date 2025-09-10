@@ -44,3 +44,15 @@ exports.createOrder = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to create order', error: err.message });
   }
 };
+
+// Get all orders for admin
+exports.getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find()
+      .populate('items.product', 'name images salePrice retailPrice')
+      .sort({ orderedAt: -1 });
+    res.status(200).json({ success: true, orders });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch all orders', error: err.message });
+  }
+};
