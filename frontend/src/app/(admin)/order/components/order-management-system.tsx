@@ -1,9 +1,8 @@
 "use client"
 
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import axios from "axios"
 
-import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -32,176 +31,12 @@ import {
   Printer,
 } from "lucide-react"
 
-// Enhanced mock data with multiple products per order
-const mockOrders = [
-  {
-    id: "DEL-001",
-    orderId: "ORD-2025-001",
-    referenceCode: "GC001",
-    customerName: "Sarah Johnson",
-    customerPhone: "+1 234-567-8900",
-    customerEmail: "sarah.j@email.com",
-    address: "456 Oak Avenue, Apt 2B, New York, NY 10002",
-    billingAddress: "123 Main Street, New York, NY 10001",
-    status: "pending_acceptance",
-    assignedStaff: null,
-    staffPhone: null,
-    estimatedTime: "2:00 PM - 4:00 PM",
-    codAmount: 0,
-    totalAmount: 289.97,
-    isGift: true,
-    giftWrap: true,
-    giftMessage: "🎉 Happy Birthday Sarah! Hope you love this special gift! 💝",
-    specialInstructions: "Ring doorbell twice, leave with concierge if no answer",
-    priority: "high",
-    orderDate: "2025-01-22T10:30:00Z",
-    items: [
-      {
-        id: "ITEM-001",
-        name: "Premium Gift Box - Luxury Collection",
-        sku: "PGB-LUX-001",
-        quantity: 1,
-        price: 129.99,
-        category: "Gift Boxes",
-        image: "/placeholder.svg?height=60&width=60&text=Gift+Box",
-        status: "in_stock",
-        weight: "2.5 lbs",
-      },
-      {
-        id: "ITEM-002",
-        name: "Artisan Chocolate Truffles",
-        sku: "ACT-DEL-002",
-        quantity: 2,
-        price: 49.99,
-        category: "Chocolates",
-        image: "/placeholder.svg?height=60&width=60&text=Chocolate",
-        status: "in_stock",
-        weight: "1.2 lbs",
-      },
-      {
-        id: "ITEM-003",
-        name: "Silk Ribbon Set",
-        sku: "SRS-PNK-003",
-        quantity: 1,
-        price: 59.99,
-        category: "Accessories",
-        image: "/placeholder.svg?height=60&width=60&text=Ribbon",
-        status: "in_stock",
-        weight: "0.3 lbs",
-      },
-    ],
-    packingStatus: "not_packed",
-    customerNotes: "First time customer, please handle with extra care",
-    internalNotes: "",
-    orderSource: "website",
-    paymentMethod: "credit_card",
-    shippingMethod: "express",
-    trackingNumber: "",
-  },
-  {
-    id: "DEL-002",
-    orderId: "ORD-2025-002",
-    referenceCode: "GC002",
-    customerName: "Michael Chen",
-    customerPhone: "+1 234-567-8901",
-    customerEmail: "michael.c@email.com",
-    address: "789 Pine Street, Brooklyn, NY 11201",
-    billingAddress: "789 Pine Street, Brooklyn, NY 11201",
-    status: "accepted",
-    assignedStaff: "John Delivery",
-    staffPhone: "+1 234-567-9000",
-    estimatedTime: "10:00 AM - 12:00 PM",
-    codAmount: 89.5,
-    totalAmount: 89.5,
-    isGift: false,
-    giftWrap: false,
-    giftMessage: null,
-    specialInstructions: "Call before delivery",
-    priority: "normal",
-    orderDate: "2025-01-22T09:15:00Z",
-    items: [
-      {
-        id: "ITEM-004",
-        name: "Artisan Candle Set",
-        sku: "ACS-VAN-004",
-        quantity: 2,
-        price: 44.75,
-        category: "Candles",
-        image: "/placeholder.svg?height=60&width=60&text=Candle",
-        status: "in_stock",
-        weight: "3.0 lbs",
-      },
-    ],
-    packingStatus: "packing_in_progress",
-    customerNotes: "Regular customer, prefers morning delivery",
-    internalNotes: "Customer requested vanilla scent",
-    orderSource: "mobile_app",
-    paymentMethod: "paypal",
-    shippingMethod: "standard",
-    trackingNumber: "TRK123456789",
-  },
-  {
-    id: "DEL-003",
-    orderId: "ORD-2025-003",
-    referenceCode: "GC003",
-    customerName: "Emma Wilson",
-    customerPhone: "+1 234-567-8902",
-    customerEmail: "emma.w@email.com",
-    address: "321 Elm Street, Queens, NY 11375",
-    billingAddress: "321 Elm Street, Queens, NY 11375",
-    status: "packed_ready",
-    assignedStaff: "Maria Rodriguez",
-    staffPhone: "+1 234-567-9001",
-    estimatedTime: "3:00 PM - 5:00 PM",
-    codAmount: 0,
-    totalAmount: 449.96,
-    isGift: true,
-    giftWrap: true,
-    giftMessage: "Congratulations on your promotion! 🎊",
-    specialInstructions: "Fragile items - handle with care",
-    priority: "high",
-    orderDate: "2025-01-22T08:45:00Z",
-    items: [
-      {
-        id: "ITEM-005",
-        name: "Luxury Jewelry Box",
-        sku: "LJB-ROG-005",
-        quantity: 1,
-        price: 299.99,
-        category: "Jewelry",
-        image: "/placeholder.svg?height=60&width=60&text=Jewelry",
-        status: "in_stock",
-        weight: "4.2 lbs",
-      },
-      {
-        id: "ITEM-006",
-        name: "Pearl Necklace",
-        sku: "PN-WHT-006",
-        quantity: 1,
-        price: 149.97,
-        category: "Jewelry",
-        image: "/placeholder.svg?height=60&width=60&text=Necklace",
-        status: "in_stock",
-        weight: "0.5 lbs",
-      },
-    ],
-    packingStatus: "packed",
-    customerNotes: "VIP customer, premium packaging required",
-    internalNotes: "Include care instructions for jewelry",
-    orderSource: "phone",
-    paymentMethod: "credit_card",
-    shippingMethod: "express",
-    trackingNumber: "TRK987654321",
-  },
-]
-
 const statusColors = {
-  pending_acceptance: "bg-yellow-100 text-yellow-800",
-  accepted: "bg-blue-100 text-blue-800",
-  packed_ready: "bg-purple-100 text-purple-800",
-  out_for_delivery: "bg-indigo-100 text-indigo-800",
+  pending: "bg-yellow-100 text-yellow-800",
+  processing: "bg-blue-100 text-blue-800",
+  shipped: "bg-purple-100 text-purple-800",
   delivered: "bg-green-100 text-green-800",
-  failed_attempt: "bg-red-100 text-red-800",
+  cancelled: "bg-red-100 text-red-800",
 }
 
 const packingStatusColors = {
@@ -216,36 +51,54 @@ const priorityColors = {
   low: "bg-green-100 text-green-800",
 }
 
+// Order interface (for reference only)
+// interface Order {
+//   _id: string
+//   createdAt: string
+//   orderedAt: string
+//   status: string
+//   total: number
+//   statusHistory: { status: string; updatedAt: string; notes: string }[]
+//   user: { _id: string; name: string; email: string; phone: string; address: string }
+//   items: { product: string; name: string; price: number; quantity: number; image: string }[]
+//   deliveryNotes: string
+//   trackingNumber: string
+// }
+
 export function OrderManagementSystem() {
+  const [orders, setOrders] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [activeTab, setActiveTab] = useState("pending")
-  const [expandedOrders, setExpandedOrders] = useState([]) // Removed default value type issue
+  const [expandedOrders, setExpandedOrders] = useState([])
   const [selectedItems, setSelectedItems] = useState([])
   const [internalNotes, setInternalNotes] = useState({})
-  const [selectedOrder, setSelectedOrder] = useState(null) // Removed default value type issue
+  const [selectedOrder, setSelectedOrder] = useState(null)
 
-  const filteredOrders = mockOrders.filter((order) => {
+  const filteredOrders = orders.filter((order) => {
+    if (!order || !order.user || !order.items) return false
+
     const matchesSearch =
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.orderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.referenceCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.items.some((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      (order.user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.user.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.items.some((item) => item.name?.toLowerCase().includes(searchTerm.toLowerCase()))) ?? false
 
     const matchesStatus = statusFilter === "all" || order.status === statusFilter
 
     const matchesTab =
-      (activeTab === "pending" && order.status === "pending_acceptance") ||
-      (activeTab === "accepted" && order.status === "accepted") ||
-      (activeTab === "packed" && order.status === "packed_ready") ||
-      (activeTab === "delivery" && (order.status === "out_for_delivery" || order.status === "delivered")) ||
+      (activeTab === "pending" && order.status === "pending") ||
+      (activeTab === "accepted" && order.status === "processing") ||
+      (activeTab === "packed" && order.status === "shipped") ||
+      (activeTab === "delivery" && (order.status === "shipped" || order.status === "delivered")) ||
       activeTab === "all"
 
     return matchesSearch && matchesStatus && matchesTab
   })
 
   const toggleOrderExpansion = (orderId) => {
-    setExpandedOrders((prev) => (prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId]))
+    setExpandedOrders((prev) =>
+      prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId],
+    )
   }
 
   const acceptOrder = (orderId) => {
@@ -419,7 +272,44 @@ export function OrderManagementSystem() {
     const fetchAllOrders = async () => {
       try {
         const response = await axios.get("http://localhost:5000/api/orders/all")
-        console.log("All Orders:", response.data.orders)
+        const ordersData = response.data.orders.map((order) => ({
+          id: order._id,
+          _id: order._id,
+          createdAt: order.createdAt,
+          orderedAt: order.orderedAt,
+          orderDate: order.orderedAt,
+          status: order.status.toLowerCase().replace(' ', '_'),
+          total: order.total,
+          totalAmount: order.total,
+          statusHistory: order.statusHistory || [],
+          user: order.user || {},
+          items: order.items || [],
+          deliveryNotes: order.deliveryNotes || '',
+          trackingNumber: order.trackingNumber || '',
+          // Default values for missing properties
+          referenceCode: `REF-${order._id.slice(-6)}`,
+          orderId: order._id,
+          priority: 'normal',
+          orderSource: 'web',
+          customerName: order.user?.name || 'N/A',
+          customerPhone: order.user?.phone || 'N/A',
+          customerEmail: order.user?.email || 'N/A',
+          customerNotes: '',
+          packingStatus: 'not_packed',
+          assignedStaff: '',
+          codAmount: 0,
+          paymentMethod: 'online_payment',
+          isGift: false,
+          giftWrap: false,
+          giftMessage: '',
+          address: order.user?.address || 'N/A',
+          billingAddress: order.user?.address || 'N/A',
+          estimatedTime: '2-3 days',
+          shippingMethod: 'standard',
+          specialInstructions: '',
+          internalNotes: ''
+        }))
+        setOrders(ordersData)
       } catch (error) {
         console.error("Error fetching all orders:", error)
       }
@@ -463,7 +353,7 @@ export function OrderManagementSystem() {
       </header>
 
       <div className="p-6 space-y-6">
-        <DashboardStats orders={mockOrders} />
+        <DashboardStats orders={orders} />
 
         {/* Enhanced Order Management */}
         <Card>

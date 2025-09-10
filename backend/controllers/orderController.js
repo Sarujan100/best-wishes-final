@@ -50,7 +50,7 @@ exports.getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
       .populate('items.product', 'name images salePrice retailPrice')
-      .populate('user', 'name email phone') // Populate user details
+      .populate('user', 'name email phone address') // Include address in user details
       .sort({ orderedAt: -1 });
     res.status(200).json({ success: true, orders });
   } catch (err) {
