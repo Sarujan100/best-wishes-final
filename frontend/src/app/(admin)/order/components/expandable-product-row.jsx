@@ -49,7 +49,7 @@ export function ExpandableProductRow({ order, isExpanded }) {
                         </div>
                       </div>
                       <Badge variant={item.status === "in_stock" ? "default" : "secondary"} className="text-xs">
-                        {item.status.replace("_", " ")}
+                        {(item.status || "unknown").replace("_", " ")}
                       </Badge>
                     </div>
                   </div>
