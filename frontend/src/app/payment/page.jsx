@@ -66,6 +66,7 @@ function PaymentForm({ clientSecret, amount, currency, product, qty }) {
 
 export default function PaymentPage() {
 	const searchParams = useSearchParams();
+	const router = useRouter();
 	const productId = searchParams.get("productId");
 	const qty = parseInt(searchParams.get("qty") || "1", 10);
 	const { user } = useSelector((state) => state.userState);
@@ -197,55 +198,102 @@ export default function PaymentPage() {
 
 					<div className='w-full lg:w-[40%] space-y-4'>
 						<div className='p-5 border-2 border-[#D9D9D9] rounded-[10px]'>
-							<h2 className='text-xl font-semibold mb-3'>Payment Options</h2>
-							
-							{/* Collaborative Purchase Option */}
-							<div className='mb-4 p-4 border border-purple-200 rounded-lg bg-purple-50'>
-								<h3 className='font-semibold text-purple-700 mb-2'>🛒 Collaborative Purchase</h3>
-								<p className='text-sm text-gray-600 mb-3'>
-									Split the cost with friends! Invite up to 3 people to share the purchase.
-								</p>
-								<button
-									onClick={() => {
-										console.log('Button clicked - product:', product);
-										console.log('Button clicked - product._id:', product?._id);
-										console.log('Button clicked - productId from URL:', productId);
-										
-										if (!product) {
-											toast.error('Product not loaded yet. Please wait a moment and try again.');
-											return;
-										}
-										
-										const finalProductId = product._id || productId;
-										console.log('Button clicked - finalProductId:', finalProductId);
-										
-										if (!finalProductId) {
-											toast.error('Product ID is missing. Please refresh the page and try again.');
-											console.error('Product ID missing - product._id:', product._id, 'productId from URL:', productId);
-											return;
-										}
-										
-										setShowCollaborativeModal(true);
-									}}
-									className='w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors'
-									disabled={!product || (!product._id && !productId)}
-								>
-									Create Collaborative Purchase
-								</button>
-							</div>
+						{amount.toFixed(2) >= 50 ? (
+							<>
+								<h2 className='text-xl font-semibold mb-3'>Payment Options</h2>
+								
+								{/* Collaborative Purchase Option */}
+								<div className='mb-4 p-4 border border-purple-200 rounded-lg bg-purple-50'>
+									<h3 className='font-semibold text-purple-700 mb-2'>🛒 Collaborative Purchase</h3>
+									<p className='text-sm text-gray-600 mb-3'>
+										Split the cost with friends! Invite up to 3 people to share the purchase.
+									</p>
+									<button
+										onClick={() => {
+											console.log('Button clicked - product:', product);
+											console.log('Button clicked - product._id:', product?._id);
+											console.log('Button clicked - productId from URL:', productId);
+											
+											if (!product) {
+												toast.error('Product not loaded yet. Please wait a moment and try again.');
+												return;
+											}
+											
+											const finalProductId = product._id || productId;
+											console.log('Button clicked - finalProductId:', finalProductId);
+											
+											if (!finalProductId) {
+												toast.error('Product ID is missing. Please refresh the page and try again.');
+												console.error('Product ID missing - product._id:', product._id, 'productId from URL:', productId);
+												return;
+											}
+											
+											setShowCollaborativeModal(true);
+										}}
+										className='w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors'
+										disabled={!product || (!product._id && !productId)}
+									>
+										Create Collaborative Purchase
+									</button>
+								</div>
+								
+								{/* Individual Payment Option */}
+								<div className='border-t pt-4'>
+									<h3 className='font-semibold mb-3'>💳 Individual Payment</h3>
+									{clientSecret && (
+										<Elements options={{ clientSecret }} stripe={stripePromise}>
+											<PaymentForm clientSecret={clientSecret} amount={amount} currency={currency} product={product} qty={qty} />
+										</Elements>
+									)}
+									{!clientSecret && (
+										<p className='text-sm text-green-500'>Initializing payment...</p>
+									)}
+								</div>
 
-							{/* Individual Payment Option */}
-							<div className='border-t pt-4'>
-								<h3 className='font-semibold mb-3'>💳 Individual Payment</h3>
-								{clientSecret && (
-									<Elements options={{ clientSecret }} stripe={stripePromise}>
-										<PaymentForm clientSecret={clientSecret} amount={amount} currency={currency} product={product} qty={qty} />
-									</Elements>
+								{/* Gift Options */}
+								{amount >= 20 && (
+									<div className="w-full flex flex-col sm:flex-row gap-[15px] mt-4">
+										<button
+											className="border text-[#822BE2] rounded-[8px] h-[50px] font-semibold hover:bg-purple-50 transition-colors w-full"
+											onClick={() => router.push(`/surprisegift?productId=${product?._id || productId}&qty=${qty}`)}
+										>
+											Apply Surprise Gift
+										</button>
+									</div>
 								)}
-								{!clientSecret && (
-									<p className='text-sm text-red-500'>Initializing payment...</p>
+							</>
+						) : (
+							<div>
+								<h2 className='text-xl font-semibold mb-3'>Payment Options</h2>
+								<p className='text-sm text-gray-600 mb-4'>
+									Minimum order amount is $50 for collaborative purchases. Your current total is ${amount.toFixed(2)}.
+								</p>
+								{/* Individual Payment Option */}
+								<div className='border-t pt-4'>
+									<h3 className='font-semibold mb-3'>💳 Individual Payment</h3>
+									{clientSecret && (
+										<Elements options={{ clientSecret }} stripe={stripePromise}>
+											<PaymentForm clientSecret={clientSecret} amount={amount} currency={currency} product={product} qty={qty} />
+										</Elements>
+									)}
+									{!clientSecret && (
+										<p className='text-sm text-green-500'>Initializing payment...</p>
+									)}
+								</div>
+
+								{/* Gift Options */}
+								{amount >= 20 && (
+									<div className="w-full flex flex-col sm:flex-row gap-[15px] mt-4">
+										<button
+											className="border text-[#822BE2] rounded-[8px] h-[50px] font-semibold hover:bg-purple-50 transition-colors w-full"
+											onClick={() => router.push(`/surprisegift?productId=${product?._id || productId}&qty=${qty}`)}
+										>
+											Apply Surprise Gift
+										</button>
+									</div>
 								)}
 							</div>
+						)}
 						</div>
 					</div>
 				</div>

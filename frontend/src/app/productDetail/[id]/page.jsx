@@ -213,8 +213,11 @@ function ProductDetailPage() {
               <button onClick={handleAddToCart} className='flex justify-center items-center border text-[#822BE2] rounded-[8px] w-full h-[50px] gap-2 font-bold'>
                 Add to cart <LuShoppingCart />
               </button>
-              <button className='flex justify-center items-center border text-white bg-[#822BE2] rounded-[8px] w-full h-[50px] gap-2 font-bold' onClick={() => router.push(`/payment?productId=${product._id}&qty=${quantity}`)}>
-                Get now
+              <button
+                className="flex justify-center items-center border text-white bg-[#822BE2] rounded-[8px] w-full h-[50px] gap-2 font-bold cursor-pointer hover:opacity-90"
+                onClick={() => router.push(`/payment?productId=${product._id}&qty=${quantity}`)}
+              >
+                Get now - US ${(product.salePrice * quantity).toFixed(2)}
               </button>
               {/* <div className="w-full flex flex-col sm:flex-row gap-[15px]">
                 {product.salePrice >= 10 && (

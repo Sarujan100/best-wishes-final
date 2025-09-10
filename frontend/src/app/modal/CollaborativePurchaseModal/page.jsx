@@ -55,16 +55,16 @@ export default function CollaborativePurchaseModal({
         displayName: `${products.length} items`
       };
     } else {
-      const productPrice = productPrice || 0;
-      const quantity = quantity || 1;
+      const currentProductPrice = productPrice || 0;
+      const currentQuantity = quantity || 1;
       const shippingCost = 10;
-      const finalTotal = (productPrice * quantity) + shippingCost;
+      const finalTotal = (currentProductPrice * currentQuantity) + shippingCost;
       
       return {
         isMultiProduct: false,
         productName: productName || 'Product',
-        productPrice: productPrice,
-        quantity: quantity,
+        productPrice: currentProductPrice,
+        quantity: currentQuantity,
         totalAmount: finalTotal,
         itemCount: 1,
         displayName: productName || 'Product'
