@@ -7,12 +7,15 @@ import { toast } from 'sonner';
 import { Calendar, Clock, Users, DollarSign, X, CheckCircle, AlertCircle, Filter, Search, ChevronDown } from 'lucide-react';
 import Navbar from '../../components/navBar/page';
 import Footer from '../../components/footer/page';
+import { useRouter } from 'next/navigation';
+
 
 export default function CollaborativePurchasesDashboard() {
   const { user } = useSelector(state => state.userState);
+  const router = useRouter();
   const [collaborativePurchases, setCollaborativePurchases] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Filter states
   const [filters, setFilters] = useState({
     status: 'all',
@@ -26,22 +29,28 @@ export default function CollaborativePurchasesDashboard() {
     const fetchCollaborativePurchases = async () => {
       try {
         setLoading(true);
+        console.log('Fetching collaborative purchases for user:', user?.email);
         const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/collaborative-purchases`, {
           withCredentials: true
         });
         setCollaborativePurchases(res.data.collaborativePurchases || []);
       } catch (err) {
-        console.error(err);
-        toast.error('Failed to load collaborative purchases');
+        console.error('Error fetching collaborative purchases:', err);
+        if (err.response?.status === 401) {
+          toast.error('Session expired. Please login again.');
+          router.push('/login');
+        } else {
+          toast.error('Failed to load collaborative purchases');
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    if (user) {
+    if (user && user.email) {
       fetchCollaborativePurchases();
     }
-  }, [user]);
+  }, [user, router]);
 
   const handleCancel = async (purchaseId) => {
     if (!window.confirm('Are you sure you want to cancel this collaborative purchase? This will refund any paid participants.')) {
@@ -52,17 +61,22 @@ export default function CollaborativePurchasesDashboard() {
       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/collaborative-purchases/${purchaseId}/cancel`, {}, {
         withCredentials: true
       });
-      
+
       toast.success('Collaborative purchase cancelled successfully');
-      
+
       // Refresh the list
       const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/collaborative-purchases`, {
         withCredentials: true
       });
       setCollaborativePurchases(res.data.collaborativePurchases || []);
     } catch (err) {
-      console.error(err);
-      toast.error('Failed to cancel collaborative purchase');
+      console.error('Error cancelling collaborative purchase:', err);
+      if (err.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        router.push('/login');
+      } else {
+        toast.error('Failed to cancel collaborative purchase');
+      }
     }
   };
 
@@ -92,13 +106,13 @@ export default function CollaborativePurchasesDashboard() {
     const now = new Date();
     const deadlineDate = new Date(deadline);
     const diff = deadlineDate - now;
-    
+
     if (diff <= 0) return 'Expired';
-    
+
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (days > 0) return `${days}d ${hours}h`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
@@ -125,7 +139,7 @@ export default function CollaborativePurchasesDashboard() {
     if (filters.dateRange !== 'all') {
       const now = new Date();
       const filterDate = new Date();
-      
+
       switch (filters.dateRange) {
         case 'today':
           filterDate.setHours(0, 0, 0, 0);
@@ -153,11 +167,11 @@ export default function CollaborativePurchasesDashboard() {
     // Filter by search term
     if (filters.searchTerm) {
       const searchLower = filters.searchTerm.toLowerCase();
-      filtered = filtered.filter(purchase => 
-        purchase.productName.toLowerCase().includes(searchLower) ||
-        purchase.createdBy.firstName?.toLowerCase().includes(searchLower) ||
-        purchase.createdBy.email.toLowerCase().includes(searchLower) ||
-        purchase.participants.some(p => p.email.toLowerCase().includes(searchLower))
+      filtered = filtered.filter(purchase =>
+        purchase.productName?.toLowerCase().includes(searchLower) ||
+        purchase.createdBy?.firstName?.toLowerCase().includes(searchLower) ||
+        purchase.createdBy?.email?.toLowerCase().includes(searchLower) ||
+        purchase.participants?.some(p => p.email?.toLowerCase().includes(searchLower))
       );
     }
 
@@ -200,6 +214,12 @@ export default function CollaborativePurchasesDashboard() {
 
     return counts;
   }, [collaborativePurchases]);
+
+  // Check if user is authenticated after all hooks are declared
+  if (!user) {
+    router.push('/');
+    return null;
+  }
 
   if (loading) {
     return (
@@ -346,10 +366,10 @@ export default function CollaborativePurchasesDashboard() {
                   {filters.dateRange !== 'all' && (
                     <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
                       {filters.dateRange === 'today' ? 'Today' :
-                       filters.dateRange === 'week' ? 'Last 7 Days' :
-                       filters.dateRange === 'month' ? 'Last Month' :
-                       filters.dateRange === '3months' ? 'Last 3 Months' :
-                       filters.dateRange === 'year' ? 'Last Year' : filters.dateRange}
+                        filters.dateRange === 'week' ? 'Last 7 Days' :
+                          filters.dateRange === 'month' ? 'Last Month' :
+                            filters.dateRange === '3months' ? 'Last 3 Months' :
+                              filters.dateRange === 'year' ? 'Last Year' : filters.dateRange}
                       <button
                         onClick={() => setFilters(prev => ({ ...prev, dateRange: 'all' }))}
                         className="ml-1 hover:text-blue-600"
@@ -372,9 +392,9 @@ export default function CollaborativePurchasesDashboard() {
                   {filters.sortBy !== 'newest' && (
                     <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
                       Sort: {filters.sortBy === 'oldest' ? 'Oldest First' :
-                             filters.sortBy === 'amount_high' ? 'Amount (High to Low)' :
-                             filters.sortBy === 'amount_low' ? 'Amount (Low to High)' :
-                             filters.sortBy === 'deadline' ? 'Deadline (Soonest)' : filters.sortBy}
+                        filters.sortBy === 'amount_high' ? 'Amount (High to Low)' :
+                          filters.sortBy === 'amount_low' ? 'Amount (Low to High)' :
+                            filters.sortBy === 'deadline' ? 'Deadline (Soonest)' : filters.sortBy}
                       <button
                         onClick={() => setFilters(prev => ({ ...prev, sortBy: 'newest' }))}
                         className="ml-1 hover:text-blue-600"
@@ -399,11 +419,10 @@ export default function CollaborativePurchasesDashboard() {
                 <button
                   key={key}
                   onClick={() => setFilters(prev => ({ ...prev, status: key }))}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    filters.status === key
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${filters.status === key
                       ? 'bg-purple-100 text-purple-700 border border-purple-200'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {label} ({count})
                 </button>
@@ -411,145 +430,143 @@ export default function CollaborativePurchasesDashboard() {
             </div>
           </div>
 
-        {collaborativePurchases.length === 0 ? (
-          <div className="text-center py-12">
-            <Users className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No collaborative purchases</h3>
-            <p className="mt-1 text-sm text-gray-500">You haven't created or participated in any collaborative purchases yet.</p>
-          </div>
-        ) : filteredPurchases.length === 0 ? (
-          <div className="text-center py-12">
-            <Filter className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No purchases match your filters</h3>
-            <p className="mt-1 text-sm text-gray-500">Try adjusting your search criteria or clear the filters.</p>
-            <button
-              onClick={() => setFilters({
-                status: 'all',
-                dateRange: 'all',
-                searchTerm: '',
-                sortBy: 'newest'
-              })}
-              className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              Clear Filters
-            </button>
-          </div>
-        ) : (
-          <div className="grid gap-6">
-            {filteredPurchases.map((purchase) => {
-              const userStatus = getParticipantStatus(purchase.participants, user?.email);
-              const isCreator = purchase.createdBy._id === user?._id;
-              const timeRemaining = formatTimeRemaining(purchase.deadline);
-              const isExpired = new Date(purchase.deadline) < new Date();
-              
-              return (
-                <div key={purchase._id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900">{purchase.productName}</h3>
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(purchase.status)}`}>
-                          {getStatusIcon(purchase.status)}
-                          {purchase.status.charAt(0).toUpperCase() + purchase.status.slice(1)}
-                        </span>
-                      </div>
+          {collaborativePurchases.length === 0 ? (
+            <div className="text-center py-12">
+              <Users className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No collaborative purchases</h3>
+              <p className="mt-1 text-sm text-gray-500">You haven't created or participated in any collaborative purchases yet.</p>
+            </div>
+          ) : filteredPurchases.length === 0 ? (
+            <div className="text-center py-12">
+              <Filter className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No purchases match your filters</h3>
+              <p className="mt-1 text-sm text-gray-500">Try adjusting your search criteria or clear the filters.</p>
+              <button
+                onClick={() => setFilters({
+                  status: 'all',
+                  dateRange: 'all',
+                  searchTerm: '',
+                  sortBy: 'newest'
+                })}
+                className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Clear Filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-6">
+              {filteredPurchases.map((purchase) => {
+                const userStatus = getParticipantStatus(purchase.participants, user?.email);
+                const isCreator = purchase.createdBy._id === user?._id;
+                const timeRemaining = formatTimeRemaining(purchase.deadline);
+                const isExpired = new Date(purchase.deadline) < new Date();
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <DollarSign className="w-4 h-4" />
-                          <span>Total: ${purchase.totalAmount.toFixed(2)}</span>
+                return (
+                  <div key={purchase._id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-4">
+                          <h3 className="text-lg font-semibold text-gray-900">{purchase.productName}</h3>
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(purchase.status)}`}>
+                            {getStatusIcon(purchase.status)}
+                            {purchase.status.charAt(0).toUpperCase() + purchase.status.slice(1)}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <DollarSign className="w-4 h-4" />
-                          <span>Your Share: ${purchase.shareAmount.toFixed(2)}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Users className="w-4 h-4" />
-                          <span>{purchase.participants.length + 1} participants</span>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4" />
-                          <span>Created: {new Date(purchase.createdAt).toLocaleDateString()}</span>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <DollarSign className="w-4 h-4" />
+                            <span>Total: ${purchase.totalAmount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <DollarSign className="w-4 h-4" />
+                            <span>Your Share: ${purchase.shareAmount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Users className="w-4 h-4" />
+                            <span>{purchase.participants.length + 1} participants</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4" />
-                          <span className={isExpired ? 'text-red-600' : 'text-gray-600'}>
-                            {isExpired ? 'Expired' : `Expires in ${timeRemaining}`}
+
+                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4" />
+                            <span>Created: {new Date(purchase.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4" />
+                            <span className={isExpired ? 'text-red-600' : 'text-gray-600'}>
+                              {isExpired ? 'Expired' : `Expires in ${timeRemaining}`}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Participants Status */}
+                        <div className="mb-4">
+                          <h4 className="text-sm font-medium text-gray-900 mb-2">Participants Status</h4>
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="font-medium">{purchase.createdBy.firstName || purchase.createdBy.email}</span>
+                              <span className="text-green-600 font-semibold">Creator</span>
+                            </div>
+                            {purchase.participants.map((participant, idx) => (
+                              <div key={idx} className="flex justify-between items-center text-sm">
+                                <span>{participant.email}</span>
+                                <span className={`font-semibold ${participant.paymentStatus === 'paid' ? 'text-green-600' :
+                                    participant.paymentStatus === 'declined' ? 'text-red-600' :
+                                      'text-yellow-600'
+                                  }`}>
+                                  {participant.paymentStatus === 'paid' ? 'Paid' :
+                                    participant.paymentStatus === 'declined' ? 'Declined' :
+                                      'Pending'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Your Status */}
+                        <div className="mb-4">
+                          <h4 className="text-sm font-medium text-gray-900 mb-1">Your Status</h4>
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${userStatus === 'creator' ? 'text-blue-600 bg-blue-100' :
+                              userStatus === 'paid' ? 'text-green-600 bg-green-100' :
+                                userStatus === 'declined' ? 'text-red-600 bg-red-100' :
+                                  'text-yellow-600 bg-yellow-100'
+                            }`}>
+                            {userStatus === 'creator' ? 'Creator' :
+                              userStatus === 'paid' ? 'Paid' :
+                                userStatus === 'declined' ? 'Declined' :
+                                  'Pending Payment'}
                           </span>
                         </div>
                       </div>
 
-                      {/* Participants Status */}
-                      <div className="mb-4">
-                        <h4 className="text-sm font-medium text-gray-900 mb-2">Participants Status</h4>
-                        <div className="space-y-1">
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="font-medium">{purchase.createdBy.firstName || purchase.createdBy.email}</span>
-                            <span className="text-green-600 font-semibold">Creator</span>
-                          </div>
-                          {purchase.participants.map((participant, idx) => (
-                            <div key={idx} className="flex justify-between items-center text-sm">
-                              <span>{participant.email}</span>
-                              <span className={`font-semibold ${
-                                participant.paymentStatus === 'paid' ? 'text-green-600' :
-                                participant.paymentStatus === 'declined' ? 'text-red-600' :
-                                'text-yellow-600'
-                              }`}>
-                                {participant.paymentStatus === 'paid' ? 'Paid' :
-                                 participant.paymentStatus === 'declined' ? 'Declined' :
-                                 'Pending'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      {/* Action Buttons */}
+                      <div className="flex flex-col gap-2 ml-4">
+                        {isCreator && purchase.status === 'pending' && !isExpired && (
+                          <button
+                            onClick={() => handleCancel(purchase._id)}
+                            className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                          >
+                            Cancel Purchase
+                          </button>
+                        )}
 
-                      {/* Your Status */}
-                      <div className="mb-4">
-                        <h4 className="text-sm font-medium text-gray-900 mb-1">Your Status</h4>
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          userStatus === 'creator' ? 'text-blue-600 bg-blue-100' :
-                          userStatus === 'paid' ? 'text-green-600 bg-green-100' :
-                          userStatus === 'declined' ? 'text-red-600 bg-red-100' :
-                          'text-yellow-600 bg-yellow-100'
-                        }`}>
-                          {userStatus === 'creator' ? 'Creator' :
-                           userStatus === 'paid' ? 'Paid' :
-                           userStatus === 'declined' ? 'Declined' :
-                           'Pending Payment'}
-                        </span>
+                        {purchase.status === 'completed' && purchase.orderId && (
+                          <button
+                            onClick={() => window.open(`/user/history`, '_blank')}
+                            className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                          >
+                            View Order
+                          </button>
+                        )}
                       </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex flex-col gap-2 ml-4">
-                      {isCreator && purchase.status === 'pending' && !isExpired && (
-                        <button
-                          onClick={() => handleCancel(purchase._id)}
-                          className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
-                        >
-                          Cancel Purchase
-                        </button>
-                      )}
-                      
-                      {purchase.status === 'completed' && purchase.orderId && (
-                        <button
-                          onClick={() => window.open(`/user/history`, '_blank')}
-                          className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
-                        >
-                          View Order
-                        </button>
-                      )}
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
       <Footer />
