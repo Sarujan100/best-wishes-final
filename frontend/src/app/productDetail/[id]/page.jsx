@@ -16,7 +16,7 @@ import { addToCart } from '../../slices/cartSlice';
 import { AiFillStar, AiOutlineStar, AiTwotoneStar } from 'react-icons/ai';
 import axios from 'axios';
 import { toast, Toaster } from 'sonner';
-import CollaborativeGiftModal from '../../modal/CollaborativeGiftModal/page';
+import CollaborativePurchaseModal from '../../modal/CollaborativePurchaseModal/page';
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Footer from "../../components/footer/page"
@@ -131,9 +131,13 @@ function ProductDetailPage() {
 
   const openCollaborativeModal = () => setIsCollaborativeModalOpen(true);
   const closeCollaborativeModal = () => setIsCollaborativeModalOpen(false);
-  const acceptCollaborativeGuidelines = () => {
+  const handleCollaborativePurchase = (emails) => {
     setIsCollaborativeModalOpen(false);
-    toast.success("Guidelines accepted. Proceed to invite friends.");
+    toast.success("Collaborative purchase created! Invitations sent to participants.");
+    // Navigate to dashboard after a short delay
+    setTimeout(() => {
+      router.push("/dashboard/collaborative-purchases");
+    }, 1500);
   };
 
   return (
@@ -209,8 +213,11 @@ function ProductDetailPage() {
               <button onClick={handleAddToCart} className='flex justify-center items-center border text-[#822BE2] rounded-[8px] w-full h-[50px] gap-2 font-bold'>
                 Add to cart <LuShoppingCart />
               </button>
-              <button className='flex justify-center items-center border text-white bg-[#822BE2] rounded-[8px] w-full h-[50px] gap-2 font-bold' onClick={() => router.push(`/payment?productId=${product._id}&qty=${quantity}`)}>
-                Get now
+              <button
+                className="flex justify-center items-center border text-white bg-[#822BE2] rounded-[8px] w-full h-[50px] gap-2 font-bold cursor-pointer hover:opacity-90"
+                onClick={() => router.push(`/payment?productId=${product._id}&qty=${quantity}`)}
+              >
+                Get now - US ${(product.salePrice * quantity).toFixed(2)}
               </button>
               {/* <div className="w-full flex flex-col sm:flex-row gap-[15px]">
                 {product.salePrice >= 10 && (
@@ -399,13 +406,16 @@ function ProductDetailPage() {
 
 
 
-        <CollaborativeGiftModal
+        <CollaborativePurchaseModal
           isOpen={isCollaborativeModalOpen}
           onClose={closeCollaborativeModal}
-          onAccept={acceptCollaborativeGuidelines}
+          onAccept={handleCollaborativePurchase}
+          // Single product support
+          isMultiProduct={false}
           productName={product?.name}
-          productPrice={product?.salePrice}
-          productId={product._id}
+          productPrice={product?.salePrice > 0 ? product.salePrice : product.retailPrice}
+          productID={product._id}
+          quantity={quantity}
         />
 
         <Toaster position="top-center" richColors closeButton />

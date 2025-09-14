@@ -8,6 +8,7 @@ import axios from "axios"
 import { toast, Toaster } from 'sonner';
 import Image from "next/image"
 import logo from '../../assets/logo.png'
+import AuthNavbar from '../components/authNavbar/page'
 
 export default function Component() {
   const router = useRouter()
@@ -48,7 +49,7 @@ export default function Component() {
     if (!formData.phone.trim()) {
       newErrors.phone = "Phone number is required"
     } else if (!/^\d{10}$/.test(formData.phone.replace(/\D/g, ''))) {
-      newErrors.phone = "Invalid phone number"
+      newErrors.phone = "Phone number must be exactly 10 digits"
     }
     if (!formData.zipCode.trim()) {
       newErrors.zipCode = "Zip code is required"
@@ -85,7 +86,10 @@ export default function Component() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      toast.error('Please fix the errors before submitting');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -102,74 +106,65 @@ export default function Component() {
       });
 
       if (response.data.success) {
-        const otp = generateOTP();
-        await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/otp`, {
-          email: formData.email,
-          otp: otp
-        }, {
-          withCredentials: true
-        });
+        try {
+          const otp = generateOTP();
+          
+          // Store OTP and email in localStorage for OTP verification
+          localStorage.setItem('signupEmail', formData.email);
+          localStorage.setItem('signupOTP', otp);
 
-        await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/Email/sendEmail`, {
-          to: formData.email,
-          subject: "Best Wishes - Email Verification Code",
-          html: `
-    <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto;">
-      <h2 style="color: #822be2;">Hello ${formData.firstName},</h2>
+          // Send OTP to backend
+          await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/otp`, {
+            email: formData.email,
+            otp: otp
+          }, {
+            withCredentials: true
+          });
 
-      <p>Thank you for registering with <strong>Best Wishes</strong>, your trusted E-Commerce platform.</p>
+          // Send email with OTP
+          await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/Email/sendEmail`, {
+            to: formData.email,
+            subject: "Best Wishes - Email Verification Code",
+            html: `
+      <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto;">
+        <h2 style="color: #822be2;">Hello ${formData.firstName},</h2>
 
-      <p>Your One-Time Password (OTP) for email verification is:</p>
+        <p>Thank you for registering with <strong>Best Wishes</strong>, your trusted E-Commerce platform.</p>
 
-      <div style="font-size: 24px; font-weight: bold; color: #ffffff; background-color: #822be2; padding: 10px 20px; width: fit-content; border-radius: 6px;">
-        ${otp}
+        <p>Your One-Time Password (OTP) for email verification is:</p>
+
+        <div style="font-size: 24px; font-weight: bold; color: #ffffff; background-color: #822be2; padding: 10px 20px; width: fit-content; border-radius: 6px;">
+          ${otp}
+        </div>
+
+        <p style="margin-top: 20px;">
+          Please enter this code within <strong>1 minute</strong> to complete your registration.
+        </p>
+
+        <p>If you did not request this code, please ignore this email.</p>
+
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
+
+        <p style="font-size: 14px; color: #777;">
+          Best regards,<br/>
+          <strong>The Best Wishes Team</strong><br/>
+          <a href="https://www.bestwishes.lk" style="color: #822be2; text-decoration: none;">www.bestwishes.lk</a>
+        </p>
       </div>
+    `
+          });
 
-      <p style="margin-top: 20px;">
-        Please enter this code within <strong>1 minute</strong> to complete your registration.
-      </p>
+          toast.success(`Hi ${formData.firstName}, OTP sent to your email`);
 
-      <p>If you did not request this code, please ignore this email.</p>
+          setTimeout(() => {
+            router.push('/otp');
+          }, 2000); // wait 2 seconds before redirecting
 
-      <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
-
-      <p style="font-size: 14px; color: #777;">
-        Best regards,<br/>
-        <strong>The Best Wishes Team</strong><br/>
-        <a href="https://www.bestwishes.lk" style="color: #822be2; text-decoration: none;">www.bestwishes.lk</a>
-      </p>
-    </div>
-  `
-        });
-
-<<<<<<< HEAD
-        // Store email in localStorage for OTP verification
-        localStorage.setItem('signupEmail', formData.email);
-
-        
-=======
-
-        // Store email in localStorage for OTP verification
-        localStorage.setItem('signupEmail', formData.email);
-
-
-
-        await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/twoFactor`, {
-          email: formData.email,
-          twoFactorEnabled: true
-        }, {
-          withCredentials: true
-        });
-
->>>>>>> 07841920b3dbb84aed129c16ca5d6aa63c7f9f1f
-
-        toast.success(`Hi ${formData.firstName} ,OTP sent your Email`);
-
-
-        setTimeout(() => {
-          router.push('/otp');
-        }, 2000); // wait 2 seconds before redirecting
-
+        } catch (otpError) {
+          console.error('OTP/Email error:', otpError);
+          toast.error('Failed to send OTP. Please try again.');
+          // Don't clear the form data, let user retry
+        }
       }
     } catch (error) {
       let message = 'Something went wrong';
@@ -192,7 +187,9 @@ export default function Component() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f8f8] flex items-center justify-center p-4 sm:p-6 md:p-8">
+    <>
+      <AuthNavbar />
+      <div className="min-h-screen bg-[#f8f8f8] flex items-center justify-center p-4 sm:p-6 md:p-8 pt-20">
       <div className="w-full max-w-lg bg-[#ffffff] rounded-2xl p-6 sm:p-8 md:p-10 shadow-sm">
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
@@ -417,6 +414,7 @@ export default function Component() {
         </form>
       </div>
       <Toaster position="top-center" richColors closeButton />
-    </div>
+      </div>
+    </>
   )
 }

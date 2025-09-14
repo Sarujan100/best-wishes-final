@@ -610,10 +610,10 @@ export default function ProfilePage() {
                     <div className="text-center">
                       <p className="text-gray-500 mb-4">You have not participated in any collaborative gifts yet.</p>
                       <a
-                        href="/allProducts"
+                        href="/dashboard/collaborative-purchases"
                         className="inline-block px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors"
                       >
-                        Start a Contribution
+                        Visit
                       </a>
                     </div>
                   ) : (

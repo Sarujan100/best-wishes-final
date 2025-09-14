@@ -211,6 +211,7 @@ function Navbar() {
                       <li className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => handleNavigation('/user/profile')}>Profile</li>
                       <li className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => handleNavigation('/user/wishlist')}>Wishlists</li>
                       <li className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => handleNavigation('/user/history')}>History</li>
+                      <li className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => handleNavigation('/dashboard/collaborative-purchases')}>Collaborative Purchases</li>
                       <li className="px-4 py-3 hover:bg-red-50 cursor-pointer text-red-500 transition-colors" onClick={logoutHandler}>Logout</li>
                     </ul>
                   )}
@@ -305,6 +306,7 @@ function Navbar() {
                     <div className="hover:text-[#822BE2] transition-colors py-2" onClick={() => handleNavigation('/user/profile')}>Profile</div>
                     <div className="hover:text-[#822BE2] transition-colors py-2" onClick={() => handleNavigation('/user/wishlist')}>Wishlists</div>
                     <div className="hover:text-[#822BE2] transition-colors py-2" onClick={() => handleNavigation('/user/history')}>History</div>
+                    <div className="hover:text-[#822BE2] transition-colors py-2" onClick={() => handleNavigation('/dashboard/collaborative-purchases')}>Collaborative Purchases</div>
                     <div className="text-red-500 hover:text-red-600 transition-colors py-2" onClick={logoutHandler}>Logout</div>
                   </>
                 ) : (

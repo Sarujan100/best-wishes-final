@@ -138,10 +138,10 @@ export default function CheckoutPage() {
                                 <div className="flex flex-col w-[35%]">
                                     <div className='w-full p-5  border-2 border-[#D9D9D9] rounded-[10px]'>
                                         <h2 className="text-xl font-semibold text-gray-800 mb-4">Check Out</h2>
-                                        <div className="flex justify-between px-5 py-[2px]">
+                                        {/* <div className="flex justify-between px-5 py-[2px]">
                                             <p className="text-[16px] text-[#5C5C5C]">Total Items</p>
                                             <p className="text-[16px] font-semibold text-[#333333]">{cart.length}</p>
-                                        </div>
+                                        </div> */}
                                         <div className="flex justify-between px-5 py-[2px]">
                                             <p className="text-[16px] text-[#5C5C5C]">Shipping Fees</p>
                                             <p className="text-[16px] font-semibold text-[#333333]">US $10</p>

@@ -17,6 +17,7 @@ const surpriseGiftRoutes = require('./routes/surpriseGiftRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const heroSectionRoutes = require('./routes/heroSectionRoutes');
 const eventManagementRoutes = require('./routes/eventManagementRoutes');
+const collaborativePurchaseRoutes = require('./routes/collaborativePurchaseRoutes');
 
 
 const app = express();
@@ -53,6 +54,7 @@ app.use('/api/gift', giftContributionRoutes);
 app.use('/api/surprise', surpriseGiftRoutes);
 app.use('/api', heroSectionRoutes);
 app.use('/api/events', eventManagementRoutes);
+app.use('/api/collaborative-purchases', collaborativePurchaseRoutes);
 
 
 module.exports = app;

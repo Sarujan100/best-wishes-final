@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import Loader from '../components/loader/page';
 import Link from 'next/link';
 import {toast, Toaster } from 'sonner';
+import AuthNavbar from '../components/authNavbar/page';
 
 function Page() {
   const dispatch = useDispatch();
@@ -65,6 +66,7 @@ function Page() {
   return (
     <>
       {loading && <Loader />}
+      <AuthNavbar />
       <form onSubmit={submitHandler}> 
         <div className='background min-h-screen flex justify-center items-center drop-shadow-lg'>
           <div className='bg-white w-[581px] rounded-[12px] pt-[50px] pb-[50px] flex flex-col items-center space-y-[15px]'>
