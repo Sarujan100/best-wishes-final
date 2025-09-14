@@ -68,16 +68,13 @@ export function OrderManagementSystem() {
         order.user.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.items.some((item) => item.name?.toLowerCase().includes(searchTerm.toLowerCase()))) ?? false
 
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter
-
     const matchesTab =
-      (activeTab === "pending" && order.status === "pending") ||
       (activeTab === "accepted" && order.status === "processing") ||
-      (activeTab === "packed" && (order.status === "shipped" || order.status === "packing")) || // Include "Packing" status in Packed tab
-      (activeTab === "delivery" && (order.status === "shipped" || order.status === "delivered")) ||
-      activeTab === "all"
+      (activeTab === "packed" && order.status === "packing") ||
+      (activeTab === "delivery" && order.status === "shipped") ||
+      (activeTab === "all" && order.status === "delivered") // Only show delivered orders in All tab
 
-    return matchesSearch && matchesStatus && matchesTab
+    return matchesSearch && matchesTab
   })
 
   const toggleOrderExpansion = (orderId) => {
@@ -88,21 +85,13 @@ export function OrderManagementSystem() {
 
   const acceptOrder = async (orderId) => {
     try {
-      const token = localStorage.getItem("authToken"); // Retrieve the token from local storage
-      console.log("Token retrieved:", token); // Debugging log to verify token retrieval
+      console.log("Order ID being sent:", orderId); // Debugging log
       
-      // For now, proceed without token validation since user is already logged in as admin
       const response = await axios.put(
         "http://localhost:5000/api/orders/update-to-packing",
         {
           orderId,
-        },
-        // Only include headers if token exists
-        token ? {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        } : {}
+        }
       );
 
       if (response.data.success) {
@@ -281,30 +270,49 @@ export function OrderManagementSystem() {
 
   const confirmPacked = async (orderId) => {
     try {
-      const token = localStorage.getItem("authToken");
-      console.log("Token retrieved:", token);
       console.log("Order ID being sent:", orderId); // Debugging log
-
-      if (!token) {
-        alert("Authentication token is missing. Please log in again.");
-        return;
-      }
 
       const response = await axios.put(
         "http://localhost:5000/api/orders/update-to-shipped",
         {
           orderId,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         }
       );
 
       if (response.data.success) {
         console.log(`Order ${orderId} status updated to Shipped`);
         alert(`Order ${orderId} successfully updated to Shipped.`);
+        fetchOrders();
+      } else {
+        console.error(`Failed to update order status: ${response.data.message}`);
+        alert(`Failed to update order status: ${response.data.message}`);
+      }
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      if (error.response && error.response.data && error.response.data.message) {
+        alert(`Error: ${error.response.data.message}`);
+      } else {
+        alert("An unexpected error occurred while updating the order status.");
+      }
+    }
+  };
+
+  const markAsDelivered = async (orderId) => {
+    try {
+      console.log("Order ID being sent:", orderId); // Debugging log
+
+      const response = await axios.put(
+        "http://localhost:5000/api/orders/update-to-delivered",
+        {
+          orderId,
+        }
+      );
+
+      console.log("Backend response:", response.data); // Log backend response
+
+      if (response.data.success) {
+        console.log(`Order ${orderId} status updated to Delivered`);
+        alert(`Order ${orderId} successfully updated to Delivered.`);
         fetchOrders();
       } else {
         console.error(`Failed to update order status: ${response.data.message}`);
@@ -545,10 +553,10 @@ export function OrderManagementSystem() {
 
                             <TableCell>
                               <div className="space-y-2">
-                                <Badge className={statusColors[order.status]}>{order.status.replace("_", " ")}</Badge>
+                                <Badge className={statusColors[order.status]}>{order.status?.replace("_", " ") || "Unknown"}</Badge>
                                 {order.packingStatus !== "not_packed" && (
                                   <Badge className={packingStatusColors[order.packingStatus]}>
-                                    {order.packingStatus.replace("_", " ")}
+                                    {order.packingStatus?.replace("_", " ") || "Unknown"}
                                   </Badge>
                                 )}
                                 {order.assignedStaff && (
@@ -625,13 +633,19 @@ export function OrderManagementSystem() {
                                 onClick={() => {
                                   if (activeTab === "packed") {
                                     confirmPacked(order.id);
+                                  } else if (activeTab === "delivery") {
+                                    markAsDelivered(order.id); // New function to handle marking as delivered
                                   } else {
                                     acceptOrder(order.id);
                                   }
                                 }}
                                 className="ml-2"
                               >
-                                {activeTab === "packed" ? "Confirm Packed" : "Accept Order"}
+                                {activeTab === "packed"
+                                  ? "Confirm Packed"
+                                  : activeTab === "delivery"
+                                  ? "Mark as Delivered"
+                                  : "Accept Order"}
                               </Button>
                             </TableCell>
                           </TableRow>

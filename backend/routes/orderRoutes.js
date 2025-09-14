@@ -1,5 +1,5 @@
 const express = require('express');
-const { getUserOrderHistory, createOrder, getAllOrders, updateOrderToPacking, updateOrderToShipped } = require('../controllers/orderController');
+const { getUserOrderHistory, createOrder, getAllOrders, updateOrderToPacking, updateOrderToShipped, updateOrderToDelivered } = require('../controllers/orderController');
 const { isAuthenticated } = require('../middleware/authMiddleware');
 const router = express.Router();
 
@@ -17,5 +17,8 @@ router.put('/update-to-packing', updateOrderToPacking);
 
 // Update order status to Shipped
 router.put('/update-to-shipped', updateOrderToShipped);
+
+// Update order status to Delivered
+router.put('/update-to-delivered', updateOrderToDelivered);
 
 module.exports = router;
