@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { FiMail, FiPhone, FiMapPin, FiShoppingBag, FiLogOut, FiEdit2, FiUser, FiEye, FiEyeOff, FiClock, FiGift } from "react-icons/fi";
-import Navbar from "@/app/components/navbar/page";
+import Navbar from "@/app/components/navBar/page";
 import axios from "axios";
 import { toast, Toaster } from 'sonner';
 import { FaUser } from "react-icons/fa";

@@ -1,5 +1,4 @@
 import { createSlice, configureStore } from "@reduxjs/toolkit"
-import { fetchFilteredProductsFromDB } from "./sample-data"
 
 // Initial state
 const initialState = {
