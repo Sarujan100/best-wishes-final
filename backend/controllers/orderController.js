@@ -44,3 +44,126 @@ exports.createOrder = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to create order', error: err.message });
   }
 };
+
+// Get all orders for admin
+exports.getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find()
+      .populate('items.product', 'name images salePrice retailPrice')
+      .populate('user', 'firstName lastName email phone address') // Include firstName and lastName in user details
+      .sort({ orderedAt: -1 });
+    res.status(200).json({ success: true, orders });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch all orders', error: err.message });
+  }
+};
+
+// Update order status to Packing
+exports.updateOrderToPacking = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'Order ID is required' });
+    }
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (order.status !== 'Processing') {
+      return res.status(400).json({ success: false, message: 'Order must be in Processing status to update to Packing' });
+    }
+
+    order.status = 'Packing';
+    order.statusHistory.push({
+      status: 'Packing',
+      updatedBy: req.user ? req.user._id : null, // Make updatedBy optional for now
+      updatedAt: new Date(),
+    });
+
+    await order.save();
+
+    res.status(200).json({ success: true, message: 'Order status updated to Packing', order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to update order status', error: err.message });
+  }
+};
+
+// Update order status to Shipped
+exports.updateOrderToShipped = async (req, res) => {
+  try {
+    console.log('Request body:', req.body); // Debug log
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      console.log('Order ID is missing'); // Debug log
+      return res.status(400).json({ success: false, message: 'Order ID is required' });
+    }
+
+    const order = await Order.findById(orderId);
+    console.log('Found order:', order ? `ID: ${order._id}, Status: ${order.status}` : 'null'); // Debug log
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (order.status !== 'Packing') {
+      console.log(`Order status validation failed. Current status: ${order.status}, Expected: Packing`); // Debug log
+      return res.status(400).json({ success: false, message: `Order must be in Packing status to update to Shipped. Current status: ${order.status}` });
+    }
+
+    order.status = 'Shipped';
+    order.statusHistory.push({
+      status: 'Shipped',
+      updatedBy: req.user ? req.user._id : null,
+      updatedAt: new Date(),
+    });
+
+    await order.save();
+
+    res.status(200).json({ success: true, message: 'Order status updated to Shipped', order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to update order status', error: err.message });
+  }
+};
+
+// Update order status to Delivered
+exports.updateOrderToDelivered = async (req, res) => {
+  try {
+    console.log('Request body:', req.body); // Debug log
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      console.log('Order ID is missing'); // Debug log
+      return res.status(400).json({ success: false, message: 'Order ID is required' });
+    }
+
+    const order = await Order.findById(orderId);
+    console.log('Found order:', order ? `ID: ${order._id}, Status: ${order.status}` : 'null'); // Debug log
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (order.status !== 'Shipped') {
+      console.log(`Order status validation failed. Current status: ${order.status}, Expected: Shipped`); // Debug log
+      return res.status(400).json({ success: false, message: `Order must be in Shipped status to update to Delivered. Current status: ${order.status}` });
+    }
+
+    order.status = 'Delivered';
+    order.statusHistory.push({
+      status: 'Delivered',
+      updatedBy: req.user ? req.user._id : null,
+      updatedAt: new Date(),
+    });
+
+    await order.save();
+
+    res.status(200).json({ success: true, message: 'Order status updated to Delivered', order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to update order status', error: err.message });
+  }
+};
