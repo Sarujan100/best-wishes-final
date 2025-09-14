@@ -91,3 +91,41 @@ exports.updateOrderToPacking = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to update order status', error: err.message });
   }
 };
+
+// Update order status to Shipped
+exports.updateOrderToShipped = async (req, res) => {
+  try {
+    console.log('Request body:', req.body); // Debug log
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      console.log('Order ID is missing'); // Debug log
+      return res.status(400).json({ success: false, message: 'Order ID is required' });
+    }
+
+    const order = await Order.findById(orderId);
+    console.log('Found order:', order ? `ID: ${order._id}, Status: ${order.status}` : 'null'); // Debug log
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (order.status !== 'Packing') {
+      console.log(`Order status validation failed. Current status: ${order.status}, Expected: Packing`); // Debug log
+      return res.status(400).json({ success: false, message: `Order must be in Packing status to update to Shipped. Current status: ${order.status}` });
+    }
+
+    order.status = 'Shipped';
+    order.statusHistory.push({
+      status: 'Shipped',
+      updatedBy: req.user ? req.user._id : null,
+      updatedAt: new Date(),
+    });
+
+    await order.save();
+
+    res.status(200).json({ success: true, message: 'Order status updated to Shipped', order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to update order status', error: err.message });
+  }
+};

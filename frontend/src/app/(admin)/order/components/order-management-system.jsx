@@ -73,7 +73,7 @@ export function OrderManagementSystem() {
     const matchesTab =
       (activeTab === "pending" && order.status === "pending") ||
       (activeTab === "accepted" && order.status === "processing") ||
-      (activeTab === "packed" && order.status === "shipped") ||
+      (activeTab === "packed" && (order.status === "shipped" || order.status === "packing")) || // Include "Packing" status in Packed tab
       (activeTab === "delivery" && (order.status === "shipped" || order.status === "delivered")) ||
       activeTab === "all"
 
@@ -278,6 +278,60 @@ export function OrderManagementSystem() {
       printWindow.print()
     }
   }
+
+  const confirmPacked = async (orderId) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      console.log("Token retrieved:", token);
+      console.log("Order ID being sent:", orderId); // Debugging log
+
+      if (!token) {
+        alert("Authentication token is missing. Please log in again.");
+        return;
+      }
+
+      const response = await axios.put(
+        "http://localhost:5000/api/orders/update-to-shipped",
+        {
+          orderId,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.data.success) {
+        console.log(`Order ${orderId} status updated to Shipped`);
+        alert(`Order ${orderId} successfully updated to Shipped.`);
+        fetchOrders();
+      } else {
+        console.error(`Failed to update order status: ${response.data.message}`);
+        alert(`Failed to update order status: ${response.data.message}`);
+      }
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      if (error.response && error.response.data && error.response.data.message) {
+        alert(`Error: ${error.response.data.message}`);
+      } else {
+        alert("An unexpected error occurred while updating the order status.");
+      }
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const response = await axios.get("http://localhost:5000/api/orders/all");
+      const ordersData = response.data.orders.map((order) => ({
+        id: order._id,
+        ...order,
+      }));
+      setOrders(ordersData);
+    } catch (error) {
+      console.error("Error fetching all orders:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchAllOrders = async () => {
@@ -492,9 +546,11 @@ export function OrderManagementSystem() {
                             <TableCell>
                               <div className="space-y-2">
                                 <Badge className={statusColors[order.status]}>{order.status.replace("_", " ")}</Badge>
-                                <Badge className={packingStatusColors[order.packingStatus]}>
-                                  {order.packingStatus.replace("_", " ")}
-                                </Badge>
+                                {order.packingStatus !== "not_packed" && (
+                                  <Badge className={packingStatusColors[order.packingStatus]}>
+                                    {order.packingStatus.replace("_", " ")}
+                                  </Badge>
+                                )}
                                 {order.assignedStaff && (
                                   <div className="text-xs text-muted-foreground">👤 {order.assignedStaff}</div>
                                 )}
@@ -566,10 +622,16 @@ export function OrderManagementSystem() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => acceptOrder(order.id)}
+                                onClick={() => {
+                                  if (activeTab === "packed") {
+                                    confirmPacked(order.id);
+                                  } else {
+                                    acceptOrder(order.id);
+                                  }
+                                }}
                                 className="ml-2"
                               >
-                                Accept Order
+                                {activeTab === "packed" ? "Confirm Packed" : "Accept Order"}
                               </Button>
                             </TableCell>
                           </TableRow>
