@@ -25,7 +25,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 
-export function UsersTable({ users, loading, selectedUsers, onSelectionChange, filters, onUpdated }) {
+export function UsersTable({ users, loading, selectedUsers, onSelectionChange, filters, onUpdated, onViewUser }) {
   const [sortDirection, setSortDirection] = useState("asc")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
@@ -136,7 +136,7 @@ export function UsersTable({ users, loading, selectedUsers, onSelectionChange, f
               </TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-center">Logins</TableHead>
+              {/* <TableHead className="text-center">Logins</TableHead> */}
               <TableHead className="text-center">Orders</TableHead>
               <TableHead>Last Login</TableHead>
               <TableHead>
@@ -185,7 +185,7 @@ export function UsersTable({ users, loading, selectedUsers, onSelectionChange, f
                 <TableCell>
                   <Badge variant={user.status === "Active" ? "default" : "secondary"}>{user.status}</Badge>
                 </TableCell>
-                <TableCell className="text-center">{user.logins ?? '-'}</TableCell>
+                {/* <TableCell className="text-center">{user.logins ?? '-'}</TableCell> */}
                 <TableCell className="text-center">{user.orders ?? 0}</TableCell>
                 <TableCell className="text-gray-600">{user.lastLogin ? new Date(user.lastLogin).toLocaleString() : '-'}</TableCell>
                 <TableCell className="text-gray-600">{user.accountCreated ? new Date(user.accountCreated).toLocaleDateString() : '-'}</TableCell>
@@ -199,11 +199,11 @@ export function UsersTable({ users, loading, selectedUsers, onSelectionChange, f
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      {/* <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onViewUser && onViewUser(user)}>
                         <Eye className="mr-2 h-4 w-4" />
-                        View Activity
+                        View User
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      {/* <DropdownMenuItem>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit User
                       </DropdownMenuItem> */}
