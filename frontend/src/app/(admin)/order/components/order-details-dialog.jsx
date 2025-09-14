@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Gift,
   Users,
@@ -14,11 +13,6 @@ import {
   DollarSign,
   MessageSquare,
   Printer,
-  Check,
-  X,
-  Edit,
-  Plus,
-  Minus,
   Phone,
   Mail,
   Clock,
@@ -29,22 +23,28 @@ export function OrderDetailsDialog({
   order,
   isOpen,
   onClose,
-  onAcceptOrder,
-  onRejectOrder,
-  onPackingComplete,
   onPrintCustomerDetails,
-  onUpdateQuantity,
-  onRemoveItem,
-  onSaveInternalNotes,
-  internalNotes,
-  setInternalNotes,
 }) {
+  // Add null check at the beginning of the component
+  if (!order || !order.id) {
+    return (
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Order Not Available</DialogTitle>
+        </DialogHeader>
+        <div className="p-4">
+          <p>Order details are not available.</p>
+        </div>
+      </DialogContent>
+    );
+  }
+
   return (
     <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <Gift className="h-5 w-5 text-pink-500" />
-          Complete Order Details - {order?.referenceCode}
+          Order Details - {order?.referenceCode}
         </DialogTitle>
       </DialogHeader>
 
@@ -181,49 +181,17 @@ export function OrderDetailsDialog({
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                           <Label className="text-xs">Quantity:</Label>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-6 w-6 p-0 bg-transparent"
-                              onClick={() => onUpdateQuantity(order.id, item.id, item.quantity - 1)}
-                              disabled={item.quantity <= 1}
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <span className="w-8 text-center font-medium">{item.quantity}</span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-6 w-6 p-0 bg-transparent"
-                              onClick={() => onUpdateQuantity(order.id, item.id, item.quantity + 1)}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </div>
+                          <span className="w-8 text-center font-medium">{item.quantity}</span>
                         </div>
                         <div className="text-sm">
                           <span className="text-muted-foreground">Unit: </span>
-                          <span className="font-medium">${item.price}</span>
+                          <span className="font-medium">£{item.price}</span>
                         </div>
                         <div className="text-sm">
                           <span className="text-muted-foreground">Total: </span>
-                          <span className="font-bold text-green-600">${(item.price * item.quantity).toFixed(2)}</span>
+                          <span className="font-bold text-green-600">£{(item.price * item.quantity).toFixed(2)}</span>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 bg-transparent"
-                        onClick={() => onRemoveItem(order.id, item.id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
                 ))}
@@ -303,51 +271,29 @@ export function OrderDetailsDialog({
             </Card>
           )}
 
-          {/* Internal Notes */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                Internal Notes
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Textarea
-                placeholder="Add internal notes for staff..."
-                value={internalNotes[order.id] || order.internalNotes || ""}
-                onChange={(e) => setInternalNotes((prev) => ({ ...prev, [order.id]: e.target.value }))}
-                rows={3}
-              />
-              <Button size="sm" onClick={() => onSaveInternalNotes(order.id)}>
-                Save Notes
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Internal Notes - Read Only */}
+          {order?.internalNotes && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Internal Notes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm p-3 bg-gray-50 rounded border">
+                  {order.internalNotes}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Action Buttons */}
+          {/* Action Buttons - Print Only */}
           <div className="flex gap-3 pt-4 border-t">
-            <Button onClick={() => onPrintCustomerDetails(order)} className="flex-1" variant="outline">
+            <Button onClick={() => onPrintCustomerDetails && onPrintCustomerDetails(order)} className="flex-1" variant="outline">
               <Printer className="h-4 w-4 mr-2" />
               Print Complete Details
             </Button>
-            {order.status === "pending_acceptance" && (
-              <>
-                <Button onClick={() => onAcceptOrder(order.orderId)} className="flex-1">
-                  <Check className="h-4 w-4 mr-2" />
-                  Accept Order
-                </Button>
-                <Button variant="destructive" onClick={() => onRejectOrder(order.orderId)} className="flex-1">
-                  <X className="h-4 w-4 mr-2" />
-                  Reject Order
-                </Button>
-              </>
-            )}
-            {order.status === "accepted" && order.packingStatus !== "packed" && (
-              <Button onClick={() => onPackingComplete(order.orderId)} className="flex-1">
-                <Package className="h-4 w-4 mr-2" />
-                Mark as Packed
-              </Button>
-            )}
           </div>
         </div>
       )}

@@ -1,13 +1,12 @@
 "use client"
 
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Filter } from "lucide-react"
+import { Search } from "lucide-react"
 import React from "react"
 
-export function OrderSearchFilters({ searchTerm, setSearchTerm, statusFilter, setStatusFilter }) {
+export function OrderSearchFilters({ searchTerm, setSearchTerm, fromDate, setFromDate, toDate, setToDate }) {
   return (
-    <div className="flex flex-col sm:flex-row gap-4 mb-6">
+    <div className="flex flex-col sm:flex-row gap-4 mb-6 items-center">
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -18,20 +17,29 @@ export function OrderSearchFilters({ searchTerm, setSearchTerm, statusFilter, se
         />
       </div>
 
-      <Select value={statusFilter} onValueChange={setStatusFilter}>
-        <SelectTrigger className="w-full sm:w-48">
-          <Filter className="h-4 w-4 mr-2" />
-          <SelectValue placeholder="Filter by status" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Status</SelectItem>
-          <SelectItem value="pending_acceptance">Pending Acceptance</SelectItem>
-          <SelectItem value="accepted">Accepted</SelectItem>
-          <SelectItem value="packed_ready">Packed & Ready</SelectItem>
-          <SelectItem value="out_for_delivery">Out for Delivery</SelectItem>
-          <SelectItem value="delivered">Delivered</SelectItem>
-        </SelectContent>
-      </Select>
+      <div className="flex gap-4 items-center">
+        <div className="flex flex-col">
+          <label htmlFor="fromDate" className="text-sm text-muted-foreground mb-1">From Date</label>
+          <Input
+            type="date"
+            id="fromDate"
+            value={fromDate || ""}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="w-full sm:w-48"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label htmlFor="toDate" className="text-sm text-muted-foreground mb-1">To Date</label>
+          <Input
+            type="date"
+            id="toDate"
+            value={toDate || ""}
+            onChange={(e) => setToDate(e.target.value)}
+            className="w-full sm:w-48"
+          />
+        </div>
+      </div>
     </div>
   )
 }

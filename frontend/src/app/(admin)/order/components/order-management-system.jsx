@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog"
 import { DashboardStats } from "./dashboard-stats"
 import { OrderSearchFilters } from "./order-search-filters"
 import { ExpandableProductRow } from "./expandable-product-row"
@@ -61,6 +61,8 @@ export function OrderManagementSystem() {
   const [expandedOrders, setExpandedOrders] = useState([])
   const [internalNotes, setInternalNotes] = useState({})
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [fromDate, setFromDate] = useState(null)
+  const [toDate, setToDate] = useState(null)
 
   const filteredOrders = orders.filter((order) => {
     if (!order || !order.user || !order.items) return false
@@ -74,9 +76,25 @@ export function OrderManagementSystem() {
       (activeTab === "accepted" && order.status === "processing") ||
       (activeTab === "packed" && order.status === "packing") ||
       (activeTab === "delivery" && order.status === "shipped") ||
-      (activeTab === "all" && order.status === "delivered") // Only show delivered orders in All tab
+      (activeTab === "all" && order.status === "delivered") // Show ALL orders regardless of status in All tab
 
-    return matchesSearch && matchesTab
+    // Apply date filtering only for "All" tab
+    let matchesDateFilter = true;
+    if (activeTab === "all" && (fromDate || toDate)) {
+      const orderDate = new Date(order.orderDate);
+      const from = fromDate ? new Date(fromDate) : null;
+      const to = toDate ? new Date(toDate) : null;
+
+      if (from && to) {
+        matchesDateFilter = orderDate >= from && orderDate <= to;
+      } else if (from) {
+        matchesDateFilter = orderDate >= from;
+      } else if (to) {
+        matchesDateFilter = orderDate <= to;
+      }
+    }
+
+    return matchesSearch && matchesTab && matchesDateFilter
   })
 
   const toggleOrderExpansion = (orderId) => {
@@ -292,6 +310,327 @@ export function OrderManagementSystem() {
     }
   }
 
+  const printAllOrdersSequentially = async (orders) => {
+    if (!orders || orders.length === 0) {
+      alert("No orders available to print.");
+      return;
+    }
+
+    // Show confirmation with order count
+    const confirmed = window.confirm(
+      `Are you sure you want to print ${orders.length} orders? Each order will be printed separately.`
+    );
+    
+    if (!confirmed) return;
+
+    // Print orders one by one with delays
+    for (let i = 0; i < orders.length; i++) {
+      const order = orders[i];
+      console.log(`Printing order ${i + 1} of ${orders.length}: ${order.referenceCode}`);
+      
+      // Print the order
+      printOrderDetails(order);
+      
+      // Wait before printing the next order (except for the last one)
+      if (i < orders.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 second delay
+      }
+    }
+    
+    // Show completion message
+    setTimeout(() => {
+      alert(`Successfully initiated printing for ${orders.length} orders. Please check your printer queue.`);
+    }, 2000);
+  };
+
+  const printOrderDetails = (order) => {
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
+      const totalWeight = order.items.reduce((sum, item) => sum + parseFloat(item.weight?.replace(' lbs', '') || '0'), 0);
+      
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Gift Commerce - Order Invoice #${order.referenceCode}</title>
+            <style>
+              @media print {
+                @page { margin: 0.5in; size: A4; }
+                body { margin: 0; }
+              }
+              body { 
+                font-family: 'Arial', sans-serif; 
+                margin: 0; 
+                padding: 20px; 
+                line-height: 1.4; 
+                color: #333;
+                background: white;
+              }
+              .invoice-container { 
+                max-width: 800px; 
+                margin: 0 auto; 
+                background: white; 
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                overflow: hidden;
+              }
+              .header { 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 30px; 
+                text-align: center; 
+                margin-bottom: 0;
+              }
+              .header h1 { margin: 0 0 10px 0; font-size: 28px; font-weight: bold; }
+              .header h2 { margin: 0 0 5px 0; font-size: 20px; font-weight: normal; }
+              .header p { margin: 0; font-size: 14px; opacity: 0.9; }
+              
+              .content { padding: 30px; }
+              .section { 
+                margin-bottom: 30px; 
+                border-bottom: 1px solid #eee; 
+                padding-bottom: 20px;
+              }
+              .section:last-child { border-bottom: none; margin-bottom: 0; }
+              
+              .section-title { 
+                font-size: 18px; 
+                font-weight: bold; 
+                color: #667eea; 
+                margin-bottom: 15px;
+                border-left: 4px solid #667eea;
+                padding-left: 10px;
+              }
+              
+              .info-grid { 
+                display: grid; 
+                grid-template-columns: 1fr 1fr; 
+                gap: 20px; 
+                margin-bottom: 15px;
+              }
+              .info-item { margin-bottom: 8px; }
+              .label { 
+                font-weight: bold; 
+                color: #555; 
+                display: inline-block;
+                min-width: 120px;
+              }
+              .value { color: #333; }
+              
+              .items-table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin: 15px 0;
+                background: white;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+              }
+              .items-table th { 
+                background: #f8f9fa; 
+                padding: 15px 12px; 
+                text-align: left; 
+                font-weight: bold;
+                color: #555;
+                border-bottom: 2px solid #dee2e6;
+              }
+              .items-table td { 
+                padding: 12px; 
+                border-bottom: 1px solid #eee;
+                vertical-align: top;
+              }
+              .items-table tr:hover { background: #f8f9fa; }
+              .items-table tr:last-child td { border-bottom: none; }
+              
+              .payment-summary {
+                background: #f8f9fa;
+                padding: 20px;
+                border-radius: 8px;
+                border-left: 4px solid #28a745;
+              }
+              .payment-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 8px;
+                padding: 5px 0;
+              }
+              .payment-row.total {
+                border-top: 2px solid #dee2e6;
+                margin-top: 15px;
+                padding-top: 15px;
+                font-size: 18px;
+                font-weight: bold;
+                color: #28a745;
+              }
+              
+              .status-badge {
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: bold;
+                text-transform: uppercase;
+              }
+              .status-processing { background: #e3f2fd; color: #1976d2; }
+              .status-packing { background: #fff3e0; color: #f57c00; }
+              .status-shipped { background: #f3e5f5; color: #7b1fa2; }
+              .status-delivered { background: #e8f5e8; color: #2e7d32; }
+              
+              .footer {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 2px solid #eee;
+                text-align: center;
+                color: #666;
+                font-size: 12px;
+              }
+              
+              .company-info {
+                background: #667eea;
+                color: white;
+                padding: 15px;
+                margin-top: 20px;
+                border-radius: 6px;
+                text-align: center;
+              }
+              
+              @media print {
+                .invoice-container { border: none; border-radius: 0; }
+                .header { break-inside: avoid; }
+                .section { break-inside: avoid; }
+                .items-table { break-inside: avoid; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="invoice-container">
+              <div class="header">
+                <h1>🎁 GIFT COMMERCE</h1>
+                <h2>INVOICE</h2>
+                <p>Order Reference: ${order.referenceCode} | Invoice Date: ${new Date().toLocaleDateString()}</p>
+              </div>
+
+              <div class="content">
+                <div class="section">
+                  <div class="section-title">📋 Order Information</div>
+                  <div class="info-grid">
+                    <div>
+                      <div class="info-item"><span class="label">Order ID:</span> <span class="value">${order.orderId}</span></div>
+                      <div class="info-item"><span class="label">Order Date:</span> <span class="value">${new Date(order.orderDate).toLocaleDateString()} ${new Date(order.orderDate).toLocaleTimeString()}</span></div>
+                      <div class="info-item"><span class="label">Order Source:</span> <span class="value">${order.orderSource.replace('_', ' ').toUpperCase()}</span></div>
+                      <div class="info-item"><span class="label">Payment Method:</span> <span class="value">${order.paymentMethod.replace('_', ' ').toUpperCase()}</span></div>
+                    </div>
+                    <div>
+                      <div class="info-item"><span class="label">Status:</span> <span class="status-badge status-${order.status}">${order.status.replace('_', ' ').toUpperCase()}</span></div>
+                      <div class="info-item"><span class="label">Priority:</span> <span class="value">${order.priority.toUpperCase()}</span></div>
+                      <div class="info-item"><span class="label">Estimated Delivery:</span> <span class="value">${order.estimatedTime}</span></div>
+                      <div class="info-item"><span class="label">Shipping Method:</span> <span class="value">${order.shippingMethod.replace('_', ' ').toUpperCase()}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">� Customer Information</div>
+                  <div class="info-grid">
+                    <div>
+                      <div class="info-item"><span class="label">Name:</span> <span class="value">${order.customerName}</span></div>
+                      <div class="info-item"><span class="label">Phone:</span> <span class="value">${order.customerPhone}</span></div>
+                      <div class="info-item"><span class="label">Email:</span> <span class="value">${order.customerEmail}</span></div>
+                    </div>
+                    <div>
+                      <div class="info-item"><span class="label">Delivery Address:</span><br><span class="value">${order.address}</span></div>
+                      <div class="info-item"><span class="label">Billing Address:</span><br><span class="value">${order.billingAddress}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">📦 Order Items (${order.items.length} Products, ${totalItems} Total Items)</div>
+                  <table class="items-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 40%">Item Name</th>
+                        <th style="width: 15%">SKU</th>
+                        <th style="width: 15%">Category</th>
+                        <th style="width: 10%">Qty</th>
+                        <th style="width: 10%">Unit Price</th>
+                        <th style="width: 10%">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${order.items.map((item) => `
+                        <tr>
+                          <td><strong>${item.name}</strong></td>
+                          <td>${item.sku}</td>
+                          <td>${item.category}</td>
+                          <td style="text-align: center">${item.quantity}</td>
+                          <td style="text-align: right">£${item.price.toFixed(2)}</td>
+                          <td style="text-align: right"><strong>£${(item.price * item.quantity).toFixed(2)}</strong></td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">💰 Payment Summary</div>
+                  <div class="payment-summary">
+                    <div class="payment-row">
+                      <span>Subtotal (${totalItems} items):</span>
+                      <span>£${subtotal.toFixed(2)}</span>
+                    </div>
+                    <div class="payment-row">
+                      <span>Shipping & Handling:</span>
+                      <span>£0.00</span>
+                    </div>
+                    <div class="payment-row">
+                      <span>Tax:</span>
+                      <span>£0.00</span>
+                    </div>
+                    <div class="payment-row total">
+                      <span>TOTAL AMOUNT:</span>
+                      <span>£${order.totalAmount.toFixed(2)}</span>
+                    </div>
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+                      <div class="payment-row">
+                        <span>Payment Status:</span>
+                        <span style="color: #28a745; font-weight: bold;">✅ PAID ONLINE</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                ${order.isGift ? `
+                  <div class="section">
+                    <div class="section-title">🎁 Gift Information</div>
+                    <div class="info-item"><span class="label">Gift Order:</span> <span class="value">Yes ✅</span></div>
+                    <div class="info-item"><span class="label">Gift Wrap:</span> <span class="value">${order.giftWrap ? 'Yes ✅' : 'No ❌'}</span></div>
+                    ${order.giftMessage ? `<div class="info-item"><span class="label">Gift Message:</span><br><span class="value">"${order.giftMessage}"</span></div>` : ''}
+                  </div>
+                ` : ''}
+
+                <div class="footer">
+                  <div class="company-info">
+                    <strong>🏢 Gift Commerce Admin System</strong><br>
+                    Professional Order Management & Invoice Generation<br>
+                    📊 Total Weight: ${totalWeight.toFixed(1)} lbs | 📅 Printed: ${new Date().toLocaleString()}
+                  </div>
+                  <p style="margin-top: 15px;">
+                    This is a computer-generated invoice. No signature required.<br>
+                    For any queries, please contact our customer service team.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      setTimeout(() => printWindow.print(), 250); // Small delay to ensure content loads
+    }
+  };
+
   const updateButtonState = (buttonId, isProcessing, defaultText) => {
     const button = document.querySelector(buttonId);
     if (button) {
@@ -362,9 +701,52 @@ export function OrderManagementSystem() {
     }
   };
 
+  // Updated Export CSV functionality to work only with filtered data on the 'All' tab
+  const exportToCSV = () => {
+    if (activeTab !== "all") {
+      alert("Export CSV is only available on the 'All' tab.");
+      return;
+    }
+
+    const headers = [
+      "Order ID", "Customer Name", "Status", "Total Amount", "Order Date", "Tax Amount", "VAT (20%)", "Net Amount"
+    ];
+
+    const rows = filteredOrders.map((order) => {
+      const vatRate = 0.2; // UK VAT rate
+      const taxAmount = order.totalAmount * vatRate;
+      const netAmount = order.totalAmount - taxAmount;
+
+      return [
+        order.orderId,
+        order.customerName,
+        order.status,
+        order.totalAmount.toFixed(2),
+        new Date(order.orderDate).toLocaleDateString(),
+        taxAmount.toFixed(2),
+        (vatRate * 100).toFixed(2) + "%",
+        netAmount.toFixed(2),
+      ];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((value) => `"${value}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "filtered_orders_with_tax.csv");
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const fetchOrders = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/orders/all");
+      const response = await axios.get(`${API_BASE_URL}/orders/all`);
       const ordersData = response.data.orders.map((order) => ({
         id: order._id,
         ...order,
@@ -432,6 +814,14 @@ export function OrderManagementSystem() {
           specialInstructions: '',
           internalNotes: ''
         }))
+        
+        // Debug: Check what statuses we have
+        const statusCounts = ordersData.reduce((acc, order) => {
+          acc[order.status] = (acc[order.status] || 0) + 1;
+          return acc;
+        }, {});
+        console.log('Order status counts:', statusCounts);
+        
         setOrders(ordersData)
       } catch (error) {
         console.error("Error fetching all orders:", error)
@@ -440,6 +830,65 @@ export function OrderManagementSystem() {
 
     fetchAllOrders()
   }, [])
+
+  const printAllPackedOrders = () => {
+    const packedOrders = orders.filter((order) => order.status === "packing");
+
+    packedOrders.forEach((order) => {
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Delivery Information - ${order.referenceCode}</title>
+              <style>
+                body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+                .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+                .section { margin-bottom: 25px; }
+                .label { font-weight: bold; color: #333; }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <h1>Delivery Information</h1>
+                <h2>Order: ${order.referenceCode}</h2>
+              </div>
+
+              <div class="section">
+                <h3>Customer Information</h3>
+                <p><span class="label">Name:</span> ${order.customerName}</p>
+                <p><span class="label">Phone:</span> ${order.customerPhone}</p>
+                <p><span class="label">Email:</span> ${order.customerEmail}</p>
+              </div>
+
+              <div class="section">
+                <h3>Delivery Address</h3>
+                <p>${order.address}</p>
+              </div>
+
+              <div class="section">
+                <h3>Order Details</h3>
+                <p><span class="label">Order Date:</span> ${new Date(order.orderDate).toLocaleDateString()}</p>
+                <p><span class="label">Total Amount:</span> £${order.totalAmount}</p>
+              </div>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+      }
+    });
+  };
+
+  const handlePrintAll = () => {
+    if (orders && orders.length > 0) {
+      orders.forEach((order) => {
+        printOrderDetails(order);
+      });
+    } else {
+      alert("No orders available to print.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -457,29 +906,39 @@ export function OrderManagementSystem() {
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
               <CardTitle className="text-xl">Advanced Order Management System</CardTitle>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export CSV
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Printer className="h-4 w-4 mr-2" />
-                  Print All
-                </Button>
-                <Button size="sm">
-                  <Package className="h-4 w-4 mr-2" />
-                  Bulk Actions
-                </Button>
+                {activeTab === "packed" && (
+                  <Button variant="outline" size="sm" onClick={printAllPackedOrders}>
+                    <Printer className="h-4 w-4 mr-2" />
+                    Print All Packed
+                  </Button>
+                )}
+                {activeTab === "all" && (
+                  <Button variant="outline" size="sm" onClick={() => printAllOrdersSequentially(filteredOrders)}>
+                    <Printer className="h-4 w-4 mr-2" />
+                    Print All Filtered ({filteredOrders.length})
+                  </Button>
+                )}
+                {activeTab === "all" && (
+                  <Button variant="outline" size="sm" onClick={exportToCSV}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export CSV
+                  </Button>
+                )}
               </div>
             </div>
           </CardHeader>
 
           <CardContent>
-            <OrderSearchFilters
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-            />
+            {activeTab === "all" && (
+              <OrderSearchFilters
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                fromDate={fromDate}
+                setFromDate={setFromDate}
+                toDate={toDate}
+                setToDate={setToDate}
+              />
+            )}
 
             {/* Enhanced Order Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -505,9 +964,9 @@ export function OrderManagementSystem() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredOrders.map((order) => (
-                        <React.Fragment key={order.id}>
-                          <TableRow key={order.id} className="hover:bg-gray-50">
+                      {filteredOrders.map((order, index) => (
+                        <React.Fragment key={order.id || index}>
+                          <TableRow className="hover:bg-gray-50">
                             <TableCell>
                               <Button
                                 variant="ghost"
@@ -626,9 +1085,9 @@ export function OrderManagementSystem() {
                               <Dialog>
                                 <OrderActions
                                   order={order}
-                                  onRejectOrder={rejectOrder}
-                                  onPackingComplete={packingComplete}
-                                  onPrintCustomerDetails={printCustomerDetails}
+                                  onRejectOrder={null} // Disable reject functionality
+                                  onPackingComplete={null} // Disable packing complete functionality
+                                  onPrintCustomerDetails={printCustomerDetails} // Keep print functionality
                                 >
                                   <DialogTrigger asChild>
                                     <Button
@@ -642,21 +1101,22 @@ export function OrderManagementSystem() {
                                   </DialogTrigger>
                                 </OrderActions>
 
-                                {selectedOrder && (
+                                {/* Ensure `selectedOrder` is valid before rendering the dialog */}
+                                {selectedOrder ? (
                                   <OrderDetailsDialog
                                     order={selectedOrder}
                                     isOpen={!!selectedOrder}
                                     onClose={() => setSelectedOrder(null)}
-                                    onRejectOrder={rejectOrder}
-                                    onPackingComplete={packingComplete}
-                                    onPrintCustomerDetails={printCustomerDetails}
-                                    onUpdateQuantity={updateQuantity}
-                                    onRemoveItem={removeItem}
-                                    onSaveInternalNotes={saveInternalNotes}
-                                    internalNotes={internalNotes}
-                                    setInternalNotes={setInternalNotes}
+                                    onRejectOrder={null} // Disable reject functionality
+                                    onPackingComplete={null} // Disable packing complete functionality
+                                    onPrintCustomerDetails={printCustomerDetails} // Keep print functionality
+                                    onUpdateQuantity={null} // Disable update quantity functionality
+                                    onRemoveItem={null} // Disable remove item functionality
+                                    onSaveInternalNotes={null} // Disable save internal notes functionality
+                                    internalNotes={null} // Remove internal notes
+                                    setInternalNotes={null} // Remove internal notes setter
                                   />
-                                )}
+                                ) : null}
                               </Dialog>
 
                               {activeTab === "accepted" && (
@@ -696,7 +1156,6 @@ export function OrderManagementSystem() {
                               )}
                             </TableCell>
                           </TableRow>
-
                           <ExpandableProductRow order={order} isExpanded={expandedOrders.includes(order.id)} />
                         </React.Fragment>
                       ))}
