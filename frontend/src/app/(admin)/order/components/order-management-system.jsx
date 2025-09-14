@@ -51,7 +51,7 @@ const priorityColors = {
   low: "bg-green-100 text-green-800",
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export function OrderManagementSystem() {
   const [orders, setOrders] = useState([])
@@ -109,6 +109,120 @@ export function OrderManagementSystem() {
     }
   };
 
+  const testProductsEndpoint = async () => {
+    try {
+      console.log("Testing products endpoint...");
+      const response = await axios.get(`${API_BASE_URL}/api/products/test`);
+      console.log("Products test response:", response.data);
+      alert(`Products test: ${response.data.message}\nTotal products: ${response.data.totalProducts}`);
+    } catch (error) {
+      console.error("Error testing products endpoint:", error);
+      alert(`Error testing products: ${error.message}`);
+    }
+  };
+
+  const reduceProductStock = async (orderItems) => {
+    try {
+      // console.log("Order items being processed:", orderItems);
+      // console.log("API_BASE_URL value:", API_BASE_URL);
+      
+      // Filter out items without valid product IDs
+      const validItems = orderItems.filter(item => {
+        let productId = null;
+        
+        if (item.product) {
+          // If product is an object, extract its _id
+          if (typeof item.product === 'object' && item.product._id) {
+            productId = item.product._id;
+          } else if (typeof item.product === 'string') {
+            productId = item.product;
+          }
+        } else if (item.productId) {
+          productId = item.productId;
+        } else if (item.id) {
+          productId = item.id;
+        }
+        
+        const isValidObjectId = productId && typeof productId === 'string' && productId.match(/^[0-9a-fA-F]{24}$/);
+        
+        if (!isValidObjectId) {
+          // console.warn("Skipping item with invalid product ID:", item, "Extracted ID:", productId);
+          return false;
+        }
+        return true;
+      });
+
+      if (validItems.length === 0) {
+        // console.warn("No valid product IDs found in order items");
+        alert("Warning: No valid product IDs found. Stock reduction skipped.");
+        return;
+      }
+
+      const itemsToSend = validItems.map((item) => {
+        let productId = null;
+        
+        if (item.product) {
+          if (typeof item.product === 'object' && item.product._id) {
+            productId = item.product._id;
+          } else if (typeof item.product === 'string') {
+            productId = item.product;
+          }
+        } else if (item.productId) {
+          productId = item.productId;
+        } else if (item.id) {
+          productId = item.id;
+        }
+        
+        // console.log("Valid item:", item, "ProductId extracted:", productId);
+        return {
+          productId: productId,
+          quantity: item.quantity,
+        };
+      });
+
+      // console.log("Items being sent to API:", itemsToSend);
+      // console.log("API URL being used:", `${API_BASE_URL}/products/reduce-stock`);
+      // console.log("Request payload:", JSON.stringify({ items: itemsToSend }, null, 2));
+
+      const response = await axios.put(`${API_BASE_URL}/products/reduce-stock`, {
+        items: itemsToSend,
+      });
+
+      if (response.data.success) {
+        // console.log("Product stock updated successfully:", response.data);
+        // Removed alert for successful stock update
+      } else {
+        // console.error("Failed to update product stock:", response.data.message);
+        alert(`Failed to update stock: ${response.data.message}`);
+      }
+    } catch (error) {
+      // console.error("Error updating product stock:", error);
+      // console.error("Error response:", error.response?.data);
+      // console.error("Full error details:", {
+      //   message: error.message,
+      //   status: error.response?.status,
+      //   statusText: error.response?.statusText,
+      //   data: error.response?.data,
+      //   errors: error.response?.data?.errors
+      // });
+      
+      if (error.response?.data?.data?.insufficientStockItems) {
+        const insufficientItems = error.response.data.data.insufficientStockItems;
+        const itemsList = insufficientItems.map(item => 
+          `${item.productName}: requested ${item.requestedQuantity}, available ${item.availableStock}`
+        ).join('\n');
+        alert(`Insufficient stock for:\n${itemsList}`);
+      } else if (error.response?.data?.errors) {
+        const errorMessages = error.response.data.errors.map(err => err.msg || err).join('\n');
+        alert(`Validation errors:\n${errorMessages}`);
+      } else if (error.response?.data?.message) {
+        alert(`Error: ${error.response.data.message}`);
+      } else {
+        alert("Error updating product stock. Please try again.");
+      }
+    }
+  };
+
   const acceptOrder = async (orderId) => {
     try {
       console.log("Order ID being sent:", orderId); // Debugging log
@@ -129,13 +243,19 @@ export function OrderManagementSystem() {
       if (response.data.success) {
         console.log(`Order ${orderId} status updated to Packing`);
         // Update local state instead of refetching all data
-        setOrders(prevOrders => 
-          prevOrders.map(order => 
-            order.id === orderId 
-              ? { ...order, status: 'packing' }
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order.id === orderId
+              ? { ...order, status: "packing" }
               : order
           )
         );
+
+        // Reduce product stock
+        const order = orders.find((o) => o.id === orderId);
+        if (order && order.items) {
+          await reduceProductStock(order.items);
+        }
       } else {
         console.error(`Failed to update order status: ${response.data.message}`);
       }
@@ -389,31 +509,6 @@ export function OrderManagementSystem() {
               .content { padding: 30px; }
               .section { 
                 margin-bottom: 30px; 
-                border-bottom: 1px solid #eee; 
-                padding-bottom: 20px;
-              }
-              .section:last-child { border-bottom: none; margin-bottom: 0; }
-              
-              .section-title { 
-                font-size: 18px; 
-                font-weight: bold; 
-                color: #667eea; 
-                margin-bottom: 15px;
-                border-left: 4px solid #667eea;
-                padding-left: 10px;
-              }
-              
-              .info-grid { 
-                display: grid; 
-                grid-template-columns: 1fr 1fr; 
-                gap: 20px; 
-                margin-bottom: 15px;
-              }
-              .info-item { margin-bottom: 8px; }
-              .label { 
-                font-weight: bold; 
-                color: #555; 
-                display: inline-block;
                 min-width: 120px;
               }
               .value { color: #333; }
@@ -760,7 +855,7 @@ export function OrderManagementSystem() {
   useEffect(() => {
     const fetchAllOrders = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/api/orders/all")
+        const response = await axios.get(`${API_BASE_URL}/orders/all`)
         console.log('API Response:', response.data.orders);
 
         response.data.orders.forEach((order) => {
@@ -906,6 +1001,9 @@ export function OrderManagementSystem() {
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
               <CardTitle className="text-xl">Advanced Order Management System</CardTitle>
               <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={testProductsEndpoint}>
+                  Test Products API
+                </Button>
                 {activeTab === "packed" && (
                   <Button variant="outline" size="sm" onClick={printAllPackedOrders}>
                     <Printer className="h-4 w-4 mr-2" />
