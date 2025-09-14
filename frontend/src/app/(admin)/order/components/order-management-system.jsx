@@ -122,7 +122,6 @@ export function OrderManagementSystem() {
               .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
               .section { margin-bottom: 25px; }
               .label { font-weight: bold; color: #333; }
-              .gift-message { background: #fef7f7; padding: 15px; border-left: 4px solid #ec4899; margin: 15px 0; border-radius: 5px; }
               .items { border-collapse: collapse; width: 100%; margin-top: 10px; }
               .items th, .items td { border: 1px solid #ddd; padding: 12px; text-align: left; }
               .items th { background-color: #f8f9fa; font-weight: bold; }
@@ -181,7 +180,6 @@ export function OrderManagementSystem() {
                   <th>Quantity</th>
                   <th>Unit Price</th>
                   <th>Total</th>
-                  <th>Weight</th>
                 </tr>
                 ${order.items
                   .map(
@@ -191,9 +189,8 @@ export function OrderManagementSystem() {
                     <td>${item.sku}</td>
                     <td>${item.category}</td>
                     <td>${item.quantity}</td>
-                    <td>$${item.price}</td>
-                    <td>$${(item.price * item.quantity).toFixed(2)}</td>
-                    <td>${item.weight}</td>
+                    <td>£${item.price}</td>
+                    <td>£${(item.price * item.quantity).toFixed(2)}</td>
                   </tr>
                 `,
                   )
@@ -204,9 +201,9 @@ export function OrderManagementSystem() {
             <div class="section">
               <h3>💰 Payment Summary</h3>
               <div class="total-summary">
-                <p><span class="label">Subtotal:</span> $${order.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}</p>
-                <p><span class="label">Total Amount:</span> <strong>$${order.totalAmount}</strong></p>
-                ${order.codAmount > 0 ? `<div class="cod-amount"><strong>💵 COD Amount:</strong> $${order.codAmount}<br><em>Collect cash on delivery</em></div>` : "<p><span class='label'>Payment Status:</span> Paid Online ✅</p>"}
+                <p><span class="label">Subtotal:</span> £${order.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}</p>
+                <p><span class="label">Total Amount:</span> <strong>£${order.totalAmount}</strong></p>
+                ${order.codAmount > 0 ? `<div class="cod-amount"><strong>💵 COD Amount:</strong> £${order.codAmount}<br><em>Collect cash on delivery</em></div>` : "<p><span class='label'>Payment Status:</span> Paid Online ✅</p>"}
               </div>
             </div>
             
@@ -477,9 +474,9 @@ export function OrderManagementSystem() {
 
                             <TableCell>
                               <div className="space-y-1">
-                                <div className="font-medium text-lg">${order.totalAmount}</div>
+                                <div className="font-medium text-lg">£{order.totalAmount}</div>
                                 {order.codAmount > 0 && (
-                                  <div className="text-xs text-orange-600 font-medium">💵 COD: ${order.codAmount}</div>
+                                  <div className="text-xs text-orange-600 font-medium">💵 COD: £{order.codAmount}</div>
                                 )}
                                 <div className="text-xs text-muted-foreground">
                                   {order.paymentMethod.replace("_", " ")}

@@ -15,8 +15,8 @@ export function ExpandableProductRow({ order, isExpanded }) {
             <h4 className="font-semibold text-blue-600">Product Details ({order.items.length} products)</h4>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {order.items.map((item) => (
-              <Card key={item.id} className="border-l-4 border-l-blue-500">
+            {order.items.map((item, index) => (
+              <Card key={`${item.id}-${index}`} className="border-l-4 border-l-blue-500">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
                     <img
@@ -37,7 +37,7 @@ export function ExpandableProductRow({ order, isExpanded }) {
                         </div>
                         <div>
                           <span className="text-muted-foreground">Price: </span>
-                          <span className="font-medium">${item.price}</span>
+                          <span className="font-medium">£{item.price}</span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Weight: </span>
@@ -45,7 +45,7 @@ export function ExpandableProductRow({ order, isExpanded }) {
                         </div>
                         <div>
                           <span className="text-muted-foreground">Total: </span>
-                          <span className="font-bold text-green-600">${(item.price * item.quantity).toFixed(2)}</span>
+                          <span className="font-bold text-green-600">£{(item.price * item.quantity).toFixed(2)}</span>
                         </div>
                       </div>
                       <Badge variant={item.status === "in_stock" ? "default" : "secondary"} className="text-xs">
@@ -61,7 +61,7 @@ export function ExpandableProductRow({ order, isExpanded }) {
             <div className="text-sm text-muted-foreground">
               Total Weight: {order.items.reduce((sum, item) => sum + Number.parseFloat(item.weight), 0).toFixed(1)} lbs
             </div>
-            <div className="text-lg font-bold text-green-600">Order Total: ${order.totalAmount}</div>
+            <div className="text-lg font-bold text-green-600">Order Total: £{order.totalAmount}</div>
           </div>
         </div>
       </TableCell>
