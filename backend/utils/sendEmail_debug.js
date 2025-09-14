@@ -21,17 +21,12 @@ exports.Emailhandler = async function (req, res) {
     console.log('Creating transporter with email:', process.env.EMAIL);
     console.log('Email app password set:', !!process.env.EMAIL_APP_PASSWORD);
     
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false, // true for 465, false for other ports
+    const transporter = nodemailer.createTransporter({
+      service: 'gmail',
       auth: {
         user: process.env.EMAIL,
         pass: process.env.EMAIL_APP_PASSWORD,
       },
-      tls: {
-        rejectUnauthorized: false
-      }
     });
 
     const mailOptions = {
@@ -55,23 +50,6 @@ exports.Emailhandler = async function (req, res) {
     console.error('Detailed email send error:', error);
     console.error('Error message:', error.message);
     console.error('Error code:', error.code);
-    
-    // For development - if email fails, still return success but log the issue
-    if (process.env.NODE_ENV === 'development') {
-      console.log('DEVELOPMENT MODE: Email sending failed, but continuing...');
-      console.log('OTP would have been sent to:', to);
-      console.log('Email content:', { subject, text: text ? text.substring(0, 100) : 'N/A' });
-      return res.status(200).json({ 
-        success: true, 
-        messageId: 'dev-mode-' + Date.now(),
-        note: 'Development mode - email not actually sent'
-      });
-    }
-    
-    return res.status(500).json({ 
-      success: false, 
-      error: 'Email not sent', 
-      details: error.message 
-    });
+    return res.status(500).json({ success: false, error: 'Email not sent', details: error.message });
   }
 };
