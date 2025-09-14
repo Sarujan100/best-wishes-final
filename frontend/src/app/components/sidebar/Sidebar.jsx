@@ -151,32 +151,32 @@ const getNavigationData = (role) => {
           title: "Orders Management",
           icon: ShoppingCart,
           items: [
-            { title: "View All Orders", icon: Eye, href: "/admin/orders/all" },
-            {
-              title: "Edit Order Status",
-              icon: Edit,
-              href: "/admin/orders/status",
-            },
-            {
-              title: "Order Details",
-              icon: CreditCard,
-              href: "/admin/orders/details",
-            },
-            {
-              title: "Refunds & Cancellations",
-              icon: RefreshCw,
-              href: "/admin/orders/refunds",
-            },
-            {
-              title: "Order History",
-              icon: Clock,
-              href: "/admin/orders/history",
-            },
-            {
-              title: "Bulk Processing",
-              icon: Archive,
-              href: "/admin/orders/bulk",
-            },
+            { title: "View All Orders", icon: Eye, href: "/order" },
+            // {
+            //   title: "Edit Order Status",
+            //   icon: Edit,
+            //   href: "/admin/orders/status",
+            // },
+            // {
+            //   title: "Order Details",
+            //   icon: CreditCard,
+            //   href: "/admin/orders/details",
+            // },
+            // {
+            //   title: "Refunds & Cancellations",
+            //   icon: RefreshCw,
+            //   href: "/admin/orders/refunds",
+            // },
+            // {
+            //   title: "Order History",
+            //   icon: Clock,
+            //   href: "/admin/orders/history",
+            // },
+            // {
+            //   title: "Bulk Processing",
+            //   icon: Archive,
+            //   href: "/admin/orders/bulk",
+            // },
           ],
         },
         {
@@ -214,17 +214,17 @@ const getNavigationData = (role) => {
               icon: ImageIcon,
               href: "/homepage_ads",
             },
-            {
-              title: "Featured Products",
-              icon: Star,
-              href: "/admin/homepage/featured",
-            },
-            { title: "Hero Section", icon: Home, href: "/admin/homepage/hero" },
-            {
-              title: "Event Section",
-              icon: Calendar,
-              href: "/admin/homepage/events",
-            },
+            // {
+            //   title: "Featured Products",
+            //   icon: Star,
+            //   href: "/admin/homepage/featured",
+            // },
+            // { title: "Hero Section", icon: Home, href: "/admin/homepage/hero" },
+            // {
+            //   title: "Event Section",
+            //   icon: Calendar,
+            //   href: "/admin/homepage/events",
+            // },
           ],
         },
         {
