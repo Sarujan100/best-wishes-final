@@ -51,6 +51,8 @@ const priorityColors = {
   low: "bg-green-100 text-green-800",
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+
 export function OrderManagementSystem() {
   const [orders, setOrders] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -83,28 +85,50 @@ export function OrderManagementSystem() {
     )
   }
 
+  const confirmAction = (message, action) => {
+    if (window.confirm(message)) {
+      action();
+    }
+  };
+
   const acceptOrder = async (orderId) => {
     try {
       console.log("Order ID being sent:", orderId); // Debugging log
-      
+
+      const button = document.querySelector(`#accept-order-button-${orderId}`);
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Processing...";
+      }
+
       const response = await axios.put(
-        "http://localhost:5000/api/orders/update-to-packing",
+        `${API_BASE_URL}/orders/update-to-packing`,
         {
-          orderId,
+          orderId: orderId,
         }
       );
 
       if (response.data.success) {
         console.log(`Order ${orderId} status updated to Packing`);
-        alert(`Order ${orderId} successfully updated to Packing.`); // User feedback
-        // Refresh the orders list to show updated status
-        fetchOrders();
+        // Update local state instead of refetching all data
+        setOrders(prevOrders => 
+          prevOrders.map(order => 
+            order.id === orderId 
+              ? { ...order, status: 'packing' }
+              : order
+          )
+        );
       } else {
         console.error(`Failed to update order status: ${response.data.message}`);
-        alert(`Failed to update order status: ${response.data.message}`); // User feedback
       }
     } catch (error) {
       console.error("Error updating order status:", error);
+    } finally {
+      const button = document.querySelector(`#accept-order-button-${orderId}`);
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Accept Order";
+      }
     }
   }
 
@@ -268,12 +292,23 @@ export function OrderManagementSystem() {
     }
   }
 
+  const updateButtonState = (buttonId, isProcessing, defaultText) => {
+    const button = document.querySelector(buttonId);
+    if (button) {
+      button.disabled = isProcessing;
+      button.textContent = isProcessing ? "Processing..." : defaultText;
+    }
+  };
+
   const confirmPacked = async (orderId) => {
+    const buttonId = `#confirm-packed-button-${orderId}`;
+    updateButtonState(buttonId, true, "Confirm Packed");
+
     try {
       console.log("Order ID being sent:", orderId); // Debugging log
 
       const response = await axios.put(
-        "http://localhost:5000/api/orders/update-to-shipped",
+        `${API_BASE_URL}/orders/update-to-shipped`,
         {
           orderId,
         }
@@ -281,50 +316,49 @@ export function OrderManagementSystem() {
 
       if (response.data.success) {
         console.log(`Order ${orderId} status updated to Shipped`);
-        alert(`Order ${orderId} successfully updated to Shipped.`);
-        fetchOrders();
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order.id === orderId ? { ...order, status: "shipped" } : order
+          )
+        );
       } else {
         console.error(`Failed to update order status: ${response.data.message}`);
-        alert(`Failed to update order status: ${response.data.message}`);
       }
     } catch (error) {
       console.error("Error updating order status:", error);
-      if (error.response && error.response.data && error.response.data.message) {
-        alert(`Error: ${error.response.data.message}`);
-      } else {
-        alert("An unexpected error occurred while updating the order status.");
-      }
+    } finally {
+      updateButtonState(buttonId, false, "Confirm Packed");
     }
   };
 
   const markAsDelivered = async (orderId) => {
+    const buttonId = `#mark-as-delivered-button-${orderId}`;
+    updateButtonState(buttonId, true, "Mark as Delivered");
+
     try {
       console.log("Order ID being sent:", orderId); // Debugging log
 
       const response = await axios.put(
-        "http://localhost:5000/api/orders/update-to-delivered",
+        `${API_BASE_URL}/orders/update-to-delivered`,
         {
           orderId,
         }
       );
 
-      console.log("Backend response:", response.data); // Log backend response
-
       if (response.data.success) {
         console.log(`Order ${orderId} status updated to Delivered`);
-        alert(`Order ${orderId} successfully updated to Delivered.`);
-        fetchOrders();
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order.id === orderId ? { ...order, status: "delivered" } : order
+          )
+        );
       } else {
         console.error(`Failed to update order status: ${response.data.message}`);
-        alert(`Failed to update order status: ${response.data.message}`);
       }
     } catch (error) {
       console.error("Error updating order status:", error);
-      if (error.response && error.response.data && error.response.data.message) {
-        alert(`Error: ${error.response.data.message}`);
-      } else {
-        alert("An unexpected error occurred while updating the order status.");
-      }
+    } finally {
+      updateButtonState(buttonId, false, "Mark as Delivered");
     }
   };
 
@@ -592,7 +626,6 @@ export function OrderManagementSystem() {
                               <Dialog>
                                 <OrderActions
                                   order={order}
-                                  onAcceptOrder={acceptOrder}
                                   onRejectOrder={rejectOrder}
                                   onPackingComplete={packingComplete}
                                   onPrintCustomerDetails={printCustomerDetails}
@@ -614,7 +647,6 @@ export function OrderManagementSystem() {
                                     order={selectedOrder}
                                     isOpen={!!selectedOrder}
                                     onClose={() => setSelectedOrder(null)}
-                                    onAcceptOrder={acceptOrder}
                                     onRejectOrder={rejectOrder}
                                     onPackingComplete={packingComplete}
                                     onPrintCustomerDetails={printCustomerDetails}
@@ -627,26 +659,41 @@ export function OrderManagementSystem() {
                                 )}
                               </Dialog>
 
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  if (activeTab === "packed") {
-                                    confirmPacked(order.id);
-                                  } else if (activeTab === "delivery") {
-                                    markAsDelivered(order.id); // New function to handle marking as delivered
-                                  } else {
-                                    acceptOrder(order.id);
-                                  }
-                                }}
-                                className="ml-2"
-                              >
-                                {activeTab === "packed"
-                                  ? "Confirm Packed"
-                                  : activeTab === "delivery"
-                                  ? "Mark as Delivered"
-                                  : "Accept Order"}
-                              </Button>
+                              {activeTab === "accepted" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => acceptOrder(order.id)}
+                                  className="ml-2"
+                                  id={`accept-order-button-${order.id}`}
+                                >
+                                  Accept Order
+                                </Button>
+                              )}
+
+                              {activeTab === "packed" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => confirmPacked(order.id)}
+                                  className="ml-2"
+                                  id={`confirm-packed-button-${order.id}`}
+                                >
+                                  Confirm Packed
+                                </Button>
+                              )}
+
+                              {activeTab === "delivery" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => markAsDelivered(order.id)}
+                                  className="ml-2"
+                                  id={`mark-as-delivered-button-${order.id}`}
+                                >
+                                  Mark as Delivered
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
 
