@@ -25,7 +25,7 @@ const app = express();
 
 connectDB();
 
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001'];
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001','https://best-wishes-final.vercel.app'];
 if (process.env.FRONT_URL) {
   allowedOrigins.push(process.env.FRONT_URL);
 }
