@@ -264,3 +264,149 @@ exports.deleteProduct = async (req, res) => {
     });
   }
 };
+
+// New function to reduce product stock when order is accepted
+exports.reduceStock = async (req, res) => {
+  try {
+    console.log("Reduce stock request body:", req.body);
+    
+    const { items } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Items array is required and cannot be empty"
+      });
+    }
+
+    // Validate each item
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      console.log(`Validating item ${i}:`, item);
+      
+      if (!item.productId || !item.quantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid item at index ${i}: productId and quantity are required`
+        });
+      }
+
+      if (item.quantity <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid quantity at index ${i}: quantity must be greater than 0`
+        });
+      }
+
+      // Check if productId is a valid MongoDB ObjectId
+      if (!item.productId.match(/^[0-9a-fA-F]{24}$/)) {
+        console.log(`Invalid ObjectId at index ${i}:`, item.productId);
+        return res.status(400).json({
+          success: false,
+          message: `Invalid product ID at index ${i}: must be a valid MongoDB ObjectId`
+        });
+      }
+    }
+
+    const stockUpdates = [];
+    const insufficientStockItems = [];
+
+    // Start a transaction to ensure atomic operations
+    const session = await Product.startSession();
+    
+    try {
+      await session.withTransaction(async () => {
+        // Check stock availability for all items first
+        for (const item of items) {
+          const { productId, quantity } = item;
+          console.log(`Processing product ${productId} with quantity ${quantity}`);
+
+          const product = await Product.findById(productId).session(session);
+          
+          if (!product) {
+            throw new Error(`Product not found: ${productId}`);
+          }
+
+          console.log(`Found product: ${product.name}, current stock: ${product.stock}`);
+
+          // Check if sufficient stock is available
+          if (product.stock < quantity) {
+            insufficientStockItems.push({
+              productId: productId,
+              productName: product.name,
+              requestedQuantity: quantity,
+              availableStock: product.stock
+            });
+            continue;
+          }
+
+          stockUpdates.push({
+            productId: productId,
+            productName: product.name,
+            oldStock: product.stock,
+            newStock: product.stock - quantity,
+            reducedQuantity: quantity
+          });
+        }
+
+        // If any items have insufficient stock, abort the transaction
+        if (insufficientStockItems.length > 0) {
+          throw new Error("Insufficient stock for some items");
+        }
+
+        // Update stock for all items
+        for (const update of stockUpdates) {
+          console.log(`Updating stock for ${update.productName}: ${update.oldStock} -> ${update.newStock}`);
+          
+          const result = await Product.findByIdAndUpdate(
+            update.productId,
+            { $inc: { stock: -update.reducedQuantity } },
+            { session, new: true }
+          );
+
+          if (!result) {
+            throw new Error(`Failed to update product: ${update.productId}`);
+          }
+
+          console.log(`Successfully updated ${update.productName} stock to ${result.stock}`);
+        }
+      });
+
+      await session.endSession();
+
+      // Return success response
+      res.json({
+        success: true,
+        message: "Stock updated successfully",
+        data: {
+          updatedItems: stockUpdates,
+          totalItemsUpdated: stockUpdates.length
+        }
+      });
+
+    } catch (transactionError) {
+      await session.endSession();
+      
+      // Check if it's an insufficient stock error
+      if (insufficientStockItems.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Insufficient stock for some items",
+          data: {
+            insufficientStockItems: insufficientStockItems
+          }
+        });
+      }
+
+      throw transactionError;
+    }
+
+  } catch (error) {
+    console.error("Error reducing product stock:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating product stock",
+      error: error.message
+    });
+  }
+};
