@@ -16,6 +16,7 @@ import { userLogout } from '@/app/slices/userSlice';
 import { clearCart } from '@/app/slices/cartSlice';
 import { clearWishlist } from '@/app/slices/wishlistSlice';
 import { fetchUserProfile } from '../../actions/userActions'; // import at the top
+import Footer from "../../components/footer/page";
 
 export default function ProfilePage() {
   const { user } = useSelector(state => state.userState);
@@ -99,7 +100,6 @@ export default function ProfilePage() {
       dispatch(userLogout());
       router.push('/');
     } catch (error) {
-      console.error('Logout error:', error);
       toast.error('Failed to logout. Please try again.');
     }
     dispatch(clearCart());
@@ -219,19 +219,15 @@ export default function ProfilePage() {
     formData.append('file', selectedFile);
     setUploading(true);
     try {
-      console.log('Uploading profile image...', selectedFile.name);
       const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/upload/single`, formData, {
         withCredentials: true,
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       
-      console.log('Upload response:', res.data);
-      
       // Store the uploaded image URL
       const uploadedImageUrl = res.data.data.url;
       setProfileImage(uploadedImageUrl);
       
-      console.log('Saving profile with new image URL:', uploadedImageUrl);
       
       // Immediately save the profile with the new image
       await handleSaveChanges(uploadedImageUrl);
@@ -240,7 +236,6 @@ export default function ProfilePage() {
       setPreviewUrl("");
       toast.success('Profile image uploaded and saved successfully!');
     } catch (err) {
-      console.error('Upload error:', err);
       toast.error('Failed to upload image');
     } finally {
       setUploading(false);
@@ -262,20 +257,15 @@ export default function ProfilePage() {
       // Use the new profile image if provided, otherwise use the current profileImage state or user's existing image
       const imageToSave = newProfileImage || profileImage || user.profileImage || "";
       
-      console.log('Saving profile changes:', { phone, address, profileImage: imageToSave });
-      
       const res = await axios.put(
         `${process.env.NEXT_PUBLIC_API_URL}/updateprofile`,
         { phone, address, profileImage: imageToSave },
         { withCredentials: true }
       );
       
-      console.log('Profile update response:', res.data);
-      
       // Update the Redux state with the new user data
       if (res.data && res.data.user) {
         dispatch(updateUserProfile(res.data.user));
-        console.log('Updated Redux state with new user data');
       }
       
       // Reset the profile image state after successful save
@@ -1031,6 +1021,7 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+    <Footer />
     </>
   );
 }

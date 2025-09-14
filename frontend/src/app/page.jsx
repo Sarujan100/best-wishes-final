@@ -85,7 +85,6 @@ export default function FancyCarousel() {
   useEffect(() => {
     dispatch(getProducts())
     dispatch(getCategories())
-    console.log("checking", allProducts)
 
     // Fetch categories from backend
     const fetchCategories = async () => {
@@ -148,12 +147,10 @@ export default function FancyCarousel() {
       try {
         const response = await fetch(`${apiUrl}/events?isActive=true`);
         const data = await response.json();
-        console.log("API Response:", data); // Log the API response
         if (data.events && data.events.length > 0) {
           const activeEvents = data.events.filter(event => event.isActive); // Filter active events
           setEvents(activeEvents);
         } else {
-          console.warn("No events found or API response invalid:", data);
           setEvents([]);
         }
       } catch (error) {
@@ -509,7 +506,7 @@ export default function FancyCarousel() {
                   <div className="p-4 flex-1 flex flex-col justify-between">
                     <h3 className="text-lg font-semibold text-gray-800 truncate">{event.name}</h3>
                     <p className="text-gray-600 text-sm mt-1">
-                      <span className="animate-blink font-bold text-purple-600 bg-gradient-to-r from-pink-400 via-yellow-400 to-purple-400 bg-clip-text text-transparent">
+                      <span className="animate-blink font-bold bg-gradient-to-r from-pink-400 via-yellow-400 to-purple-400 bg-clip-text text-transparent">
                         {new Date(event.date).toLocaleDateString()}
                       </span>
                     </p>
@@ -540,7 +537,7 @@ export default function FancyCarousel() {
             <Button
               variant="ghost"
               className="text-purple-600 hover:text-purple-700 hover:cursor-pointer"
-              onClick={() => router.push("/allProducts")}>
+              onClick={() => router.push("/allProducts/showcase")}>
               Explore more <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
