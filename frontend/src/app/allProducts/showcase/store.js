@@ -87,9 +87,6 @@ export const {
   sortProducts,
 } = productSlice.actions
 
-// Export productSlice itself
-export { productSlice }
-
 // Export store
 export const store = configureStore({
   reducer: {
