@@ -17,9 +17,10 @@ UsersFilters.propTypes = {
   }).isRequired,
   onFiltersChange: PropTypes.func.isRequired,
   onExport: PropTypes.func,
+  selectedCount: PropTypes.number,
 };
 
-export function UsersFilters({ filters, onFiltersChange, onExport }) {
+export function UsersFilters({ filters, onFiltersChange, onExport, selectedCount = 0 }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -39,9 +40,15 @@ export function UsersFilters({ filters, onFiltersChange, onExport }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => onExport && onExport()}>
+          <Button 
+            variant="outline" 
+            className="gap-2" 
+            onClick={() => onExport && onExport()}
+            disabled={selectedCount === 0}
+            title={selectedCount === 0 ? "Please select users to export" : `Export ${selectedCount} selected users`}
+          >
             <Download className="h-4 w-4" />
-            Export
+            Export {selectedCount > 0 ? `(${selectedCount})` : ''}
           </Button>
           {/* <Button className="gap-2">
             <UserPlus className="h-4 w-4" />
