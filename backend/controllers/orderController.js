@@ -57,3 +57,37 @@ exports.getAllOrders = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch all orders', error: err.message });
   }
 };
+
+// Update order status to Packing
+exports.updateOrderToPacking = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'Order ID is required' });
+    }
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (order.status !== 'Processing') {
+      return res.status(400).json({ success: false, message: 'Order must be in Processing status to update to Packing' });
+    }
+
+    order.status = 'Packing';
+    order.statusHistory.push({
+      status: 'Packing',
+      updatedBy: req.user ? req.user._id : null, // Make updatedBy optional for now
+      updatedAt: new Date(),
+    });
+
+    await order.save();
+
+    res.status(200).json({ success: true, message: 'Order status updated to Packing', order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to update order status', error: err.message });
+  }
+};

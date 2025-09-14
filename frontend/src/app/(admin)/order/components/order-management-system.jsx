@@ -86,8 +86,37 @@ export function OrderManagementSystem() {
     )
   }
 
-  const acceptOrder = (orderId) => {
-    console.log(`Accepting order: ${orderId}`)
+  const acceptOrder = async (orderId) => {
+    try {
+      const token = localStorage.getItem("authToken"); // Retrieve the token from local storage
+      console.log("Token retrieved:", token); // Debugging log to verify token retrieval
+      
+      // For now, proceed without token validation since user is already logged in as admin
+      const response = await axios.put(
+        "http://localhost:5000/api/orders/update-to-packing",
+        {
+          orderId,
+        },
+        // Only include headers if token exists
+        token ? {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        } : {}
+      );
+
+      if (response.data.success) {
+        console.log(`Order ${orderId} status updated to Packing`);
+        alert(`Order ${orderId} successfully updated to Packing.`); // User feedback
+        // Refresh the orders list to show updated status
+        fetchOrders();
+      } else {
+        console.error(`Failed to update order status: ${response.data.message}`);
+        alert(`Failed to update order status: ${response.data.message}`); // User feedback
+      }
+    } catch (error) {
+      console.error("Error updating order status:", error);
+    }
   }
 
   const rejectOrder = (orderId) => {
@@ -533,6 +562,15 @@ export function OrderManagementSystem() {
                                   />
                                 )}
                               </Dialog>
+
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => acceptOrder(order.id)}
+                                className="ml-2"
+                              >
+                                Accept Order
+                              </Button>
                             </TableCell>
                           </TableRow>
 
