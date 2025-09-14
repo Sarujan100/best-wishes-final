@@ -6,8 +6,8 @@ const Order = require('../models/Order');
 // Requires admin
 exports.listUsersWithStats = async (req, res) => {
   try {
-    // fetch users basic details
-    const users = await User.find({}, 'firstName lastName email createdAt lastLogin lastActiveAt profileImage').lean();
+    // fetch users basic details including phone and address
+    const users = await User.find({}, 'firstName lastName email phone address createdAt lastLogin lastActiveAt profileImage').lean();
 
     if (!users.length) {
       return res.status(200).json({ users: [] });
@@ -37,6 +37,8 @@ exports.listUsersWithStats = async (req, res) => {
         lastName: u.lastName,
         name: `${u.firstName} ${u.lastName}`.trim(),
         email: u.email,
+        phone: u.phone || '',
+        address: u.address || '',
         accountCreated: u.createdAt,
         lastLogin: u.lastLogin || null,
         status,

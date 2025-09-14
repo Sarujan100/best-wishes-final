@@ -7,6 +7,7 @@ import { UsersFilters } from "./user-filters"
 import { UsersBulkActions } from "./users-bulk-actions"
 import { UsersStats } from "./users-stats"
 import { Modal } from "../../../components/ui/modal"
+import { UserDetailsModal } from "./user-details-modal"
 
 export function UsersManagement() {
   const [selectedUsers, setSelectedUsers] = useState([])
@@ -24,6 +25,8 @@ export function UsersManagement() {
   const [exporting, setExporting] = useState(false)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [pdfUrl, setPdfUrl] = useState("")
+  const [isUserDetailsOpen, setIsUserDetailsOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState(null)
 
   const refreshUsers = useCallback(async () => {
     try {
@@ -76,22 +79,28 @@ export function UsersManagement() {
   }, [users, filters])
 
   const handleExport = useCallback(async () => {
+    if (selectedUsers.length === 0) return;
+    
     try {
       setExporting(true)
       const { jsPDF } = await import('jspdf')
       const autoTable = (await import('jspdf-autotable')).default
       const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
 
+      // Get selected users data
+      const selectedUsersData = users.filter(user => selectedUsers.includes(user.id))
+
       doc.setFontSize(14)
-      doc.text('Users Summary', 40, 40)
+      doc.text('Selected Users Summary', 40, 40)
       const generatedAt = new Date().toLocaleString()
       doc.setFontSize(10)
       doc.text(`Generated at: ${generatedAt}`, 40, 58)
+      doc.text(`${selectedUsersData.length} users selected`, 40, 72)
 
       const head = [[
         'Name', 'Email', 'Status', 'Orders', 'Total Amount', 'Account Created', 'Last Login'
       ]]
-      const body = filteredUsers.map(u => [
+      const body = selectedUsersData.map(u => [
         u.name || '',
         u.email || '',
         u.status || '',
@@ -104,7 +113,7 @@ export function UsersManagement() {
       autoTable(doc, {
         head,
         body,
-        startY: 72,
+        startY: 88,
         styles: { fontSize: 9, cellPadding: 6, overflow: 'linebreak' },
         headStyles: { fillColor: [59,130,246] },
         columnStyles: {
@@ -127,7 +136,12 @@ export function UsersManagement() {
     } finally {
       setExporting(false)
     }
-  }, [filteredUsers])
+  }, [selectedUsers, users])
+
+  const handleViewUser = useCallback((user) => {
+    setSelectedUser(user)
+    setIsUserDetailsOpen(true)
+  }, [])
 
   return (
     <div className="space-y-8">
@@ -145,13 +159,13 @@ export function UsersManagement() {
           <CardTitle>All Users</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <UsersFilters filters={filters} onFiltersChange={setFilters} onExport={handleExport} />
+          <UsersFilters filters={filters} onFiltersChange={setFilters} onExport={handleExport} selectedCount={selectedUsers.length} />
 
           {selectedUsers.length > 0 && (
             <UsersBulkActions selectedCount={selectedUsers.length} onClearSelection={() => setSelectedUsers([])} users={users} selectedIds={selectedUsers} onUpdated={refreshUsers} />
           )}
 
-          <UsersTable users={users} loading={loading} selectedUsers={selectedUsers} onSelectionChange={setSelectedUsers} filters={filters} onUpdated={refreshUsers} />
+          <UsersTable users={users} loading={loading} selectedUsers={selectedUsers} onSelectionChange={setSelectedUsers} filters={filters} onUpdated={refreshUsers} onViewUser={handleViewUser} />
         </CardContent>
       </Card>
 
@@ -184,6 +198,15 @@ export function UsersManagement() {
           )}
         </div>
       </Modal>
+
+      <UserDetailsModal
+        isOpen={isUserDetailsOpen}
+        onClose={() => {
+          setIsUserDetailsOpen(false)
+          setSelectedUser(null)
+        }}
+        user={selectedUser}
+      />
     </div>
   )
 }
