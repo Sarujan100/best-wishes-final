@@ -536,7 +536,7 @@ const sendInvitationEmail = async (email, paymentLink, data) => {
                   </tr>
                   <tr>
                     <td align="center" style="padding: 20px 0;">
-                          <a href="http://localhost:3000/collaborative-payment/${paymentLink}"
+                          <a href="${process.env.FRONTEND_URL}/collaborative-payment/${paymentLink}"
                          style="background-color: #6B46C1; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; display: inline-block;">
                         💳 Pay Your Share
                       </a>
@@ -614,7 +614,7 @@ const sendCreatorConfirmationEmail = async (email, data) => {
                   </tr>
                   <tr>
                     <td align="center" style="padding: 20px 0;">
-                      <a href="http://localhost:3000/dashboard/collaborative-purchases"
+                      <a href="${process.env.FRONTEND_URL}/dashboard/collaborative-purchases"
                          style="background-color: #6B46C1; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; display: inline-block;">
                         📊 Track Progress
                       </a>
