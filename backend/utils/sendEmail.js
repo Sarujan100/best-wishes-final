@@ -10,7 +10,11 @@ exports.Emailhandler = async function (req, res) {
   const { to, subject, text, html } = req.body;
 
   if (!to || !subject || (!text && !html)) {
-    return res.status(400).json({ message: "Missing required fields" });
+    return res.status(400).json({ 
+      success: false,
+      message: "Missing required fields",
+      details: "Email recipient, subject, and content (text or html) are required"
+    });
   }
 
   try {
@@ -21,12 +25,19 @@ exports.Emailhandler = async function (req, res) {
       html,
     });
 
-    return res.status(200).json(result);
+    return res.status(200).json({
+      success: true,
+      message: "Email sent successfully",
+      messageId: result.messageId
+    });
   } catch (error) {
+    console.error('❌ Email handler error:', error.message);
+    
     return res.status(500).json({
       success: false,
-      error: "Email not sent",
-      details: error.message,
+      error: "Email sending failed",
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
