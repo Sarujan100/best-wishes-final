@@ -1,4 +1,4 @@
-<!-- # Railway Deployment Configuration Guide
+# Railway Deployment Configuration Guide
 
 ## The Problem
 Your email works locally but fails on Railway hosting with a 500 Internal Server Error. This is typically caused by:
@@ -17,17 +17,17 @@ Your email works locally but fails on Railway hosting with a 500 Internal Server
 4. **Add these environment variables:**
 
 ```
-EMAIL=projectsmail07@gmail.com
-EMAIL_APP_PASSWORD=cmpbtybgvsqcbzxw
+EMAIL=your_email@gmail.com
+EMAIL_APP_PASSWORD=your_16_char_app_password_here
 ```
 
-⚠️ **IMPORTANT**: For `EMAIL_APP_PASSWORD`, remove ALL spaces: `cmpbtybgvsqcbzxw` (not `cmpb tybg vsqc bzxw`)
+⚠️ **IMPORTANT**: For `EMAIL_APP_PASSWORD`, remove ALL spaces from your Gmail app password
 
 ### Step 2: Verify Gmail App Password
 
 Your current app password has spaces which might cause issues in production:
-- **Current**: `cmpb tybg vsqc bzxw`
-- **Should be**: `cmpbtybgvsqcbzxw` (no spaces)
+- **Current**: `your current app password with spaces`
+- **Should be**: `yourcurrentapppasswordnospaces` (no spaces)
 
 If the issue persists, generate a new Gmail app password:
 1. Go to: https://myaccount.google.com/apppasswords
@@ -110,4 +110,4 @@ console.log('Environment check:', {
   "error": "Email sending failed",
   "message": "Specific error description"
 }
-``` -->
+```
