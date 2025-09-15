@@ -1,4 +1,4 @@
-# Railway Deployment Configuration Guide
+<!-- # Railway Deployment Configuration Guide
 
 ## The Problem
 Your email works locally but fails on Railway hosting with a 500 Internal Server Error. This is typically caused by:
@@ -110,4 +110,4 @@ console.log('Environment check:', {
   "error": "Email sending failed",
   "message": "Specific error description"
 }
-```
+``` -->
