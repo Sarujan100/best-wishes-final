@@ -1,77 +1,40 @@
 // sendEmail.js
-const nodemailer = require('nodemailer');
+const { sendEmail } = require("../config/emailConfig");
+require("dotenv").config(); // Ensure .env variables are loaded
 
 exports.Emailhandler = async function (req, res) {
-  console.log('Email handler called with method:', req.method);
-  console.log('Request body:', req.body);
-  
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Only POST requests allowed' });
+  console.log("Email handler called with method:", req.method);
+  console.log("Request body:", req.body);
+
+  if (req.method !== "POST") {
+    return res.status(405).json({ message: "Only POST requests allowed" });
   }
 
   const { to, subject, text, html } = req.body;
-  console.log('Email parameters:', { to, subject, hasText: !!text, hasHtml: !!html });
+  console.log("Email parameters:", { to, subject, hasText: !!text, hasHtml: !!html });
 
   if (!to || !subject || (!text && !html)) {
-    console.log('Missing required fields');
-    return res.status(400).json({ message: 'Missing required fields' });
+    console.log("Missing required fields");
+    return res.status(400).json({ message: "Missing required fields" });
   }
 
   try {
-    console.log('Creating transporter with email:', process.env.EMAIL);
-    console.log('Email app password set:', !!process.env.EMAIL_APP_PASSWORD);
-    
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.EMAIL,
-        pass: process.env.EMAIL_APP_PASSWORD,
-      },
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+    console.log("Sending email with centralized config...");
 
-    const mailOptions = {
-      from: `"BEST WISHES" <${process.env.EMAIL}>`,
+    const result = await sendEmail({
       to,
       subject,
       text,
       html,
-    };
-
-    console.log('Sending email with options:', { 
-      from: mailOptions.from, 
-      to: mailOptions.to, 
-      subject: mailOptions.subject 
     });
-    
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.messageId);
-    return res.status(200).json({ success: true, messageId: info.messageId });
+
+    return res.status(200).json(result);
   } catch (error) {
-    console.error('Detailed email send error:', error);
-    console.error('Error message:', error.message);
-    console.error('Error code:', error.code);
-    
-    // For development - if email fails, still return success but log the issue
-    if (process.env.NODE_ENV === 'development') {
-      console.log('DEVELOPMENT MODE: Email sending failed, but continuing...');
-      console.log('OTP would have been sent to:', to);
-      console.log('Email content:', { subject, text: text ? text.substring(0, 100) : 'N/A' });
-      return res.status(200).json({ 
-        success: true, 
-        messageId: 'dev-mode-' + Date.now(),
-        note: 'Development mode - email not actually sent'
-      });
-    }
-    
-    return res.status(500).json({ 
-      success: false, 
-      error: 'Email not sent', 
-      details: error.message 
+    console.error("❌ Detailed email send error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Email not sent",
+      details: error.message,
     });
   }
 };
