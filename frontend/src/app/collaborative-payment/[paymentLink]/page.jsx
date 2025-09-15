@@ -6,7 +6,8 @@ import Image from 'next/image';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import { Elements, CardElement, useElements, useStripe } from '@stripe/react-stripe-js'
+
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 
