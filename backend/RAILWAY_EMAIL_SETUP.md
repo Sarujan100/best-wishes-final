@@ -19,14 +19,6 @@ Your email works locally but fails on Railway hosting with a 500 Internal Server
 ```
 EMAIL=projectsmail07@gmail.com
 EMAIL_APP_PASSWORD=cmpbtybgvsqcbzxw
-NODE_ENV=production
-PORT=5000
-MONGO_URI=mongodb+srv://cst21056:zShz90VmkH43JJcU@bestwishes.2aognuv.mongodb.net/?retryWrites=true&w=majority&appName=Bestwishes
-JWT_SECRET=thisissecret123
-CLOUDINARY_CLOUD_NAME=dvomjqrvk
-CLOUDINARY_API_KEY=587142483158434
-CLOUDINARY_API_SECRET=PfDfMMszrtMOWFqa8XYz0zLqogA
-STRIPE_SECRET_KEY=sk_test_51RvcHBGccbLHjOZ5lCJhxrBRPHwXEOwMQ5mqge7CoFugDdpIzoo4JTILeLfbgQlOwvkxKQQDMQiOMhBTTMiZByJD00sJqG1giK
 ```
 
 ⚠️ **IMPORTANT**: For `EMAIL_APP_PASSWORD`, remove ALL spaces: `cmpbtybgvsqcbzxw` (not `cmpb tybg vsqc bzxw`)
