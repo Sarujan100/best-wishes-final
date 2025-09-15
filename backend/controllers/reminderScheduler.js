@@ -61,7 +61,7 @@ async function checkAndSendReminders() {
       console.log(`✅ Reminder email sent to ${reminder.user.email}`);
     }
   } catch (error) {
-    console.error('❌ Error sending reminders:', error);
+    console.error('❌ Error sending reminders:', error.message);
   }
 }
 
