@@ -2,13 +2,19 @@
 
 import React, { useEffect, useState } from "react"
 import axios from "axios"
+import jsPDF from "jspdf"
+import "jspdf-autotable"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from "recharts"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DashboardStats } from "./dashboard-stats"
 import { OrderSearchFilters } from "./order-search-filters"
 import { ExpandableProductRow } from "./expandable-product-row"
@@ -29,11 +35,22 @@ import {
   RefreshCw,
   Download,
   Printer,
+  BarChart3,
+  TrendingUp,
+  Calendar,
+  DollarSign,
+  Users,
+  FileText,
+  Send,
+  Filter,
+  PieChart as PieChartIcon,
+  Activity,
 } from "lucide-react"
 
 const statusColors = {
   pending: "bg-yellow-100 text-yellow-800",
   processing: "bg-blue-100 text-blue-800",
+  packing: "bg-orange-100 text-orange-800",
   shipped: "bg-purple-100 text-purple-800",
   delivered: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
@@ -57,12 +74,21 @@ export function OrderManagementSystem() {
   const [orders, setOrders] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [activeTab, setActiveTab] = useState("accepted")
+  const [activeTab, setActiveTab] = useState("pending")
   const [expandedOrders, setExpandedOrders] = useState([])
   const [internalNotes, setInternalNotes] = useState({})
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [fromDate, setFromDate] = useState(null)
   const [toDate, setToDate] = useState(null)
+
+  // Reports & Analytics state
+  const [reportDateRange, setReportDateRange] = useState("last30days")
+  const [reportFromDate, setReportFromDate] = useState("")
+  const [reportToDate, setReportToDate] = useState("")
+  const [adminEmail, setAdminEmail] = useState("")
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [isSendingEmail, setIsSendingEmail] = useState(false)
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false)
 
   const filteredOrders = orders.filter((order) => {
     if (!order || !order.user || !order.items) return false
@@ -73,7 +99,8 @@ export function OrderManagementSystem() {
         order.items.some((item) => item.name?.toLowerCase().includes(searchTerm.toLowerCase()))) ?? false
 
     const matchesTab =
-      (activeTab === "accepted" && order.status === "pending") ||
+      (activeTab === "pending" && order.status === "pending") ||
+      (activeTab === "accepted" && order.status === "processing") ||
       (activeTab === "packed" && order.status === "packing") ||
       (activeTab === "delivery" && order.status === "shipped") ||
       (activeTab === "all") // Show ALL orders regardless of status in All tab
@@ -244,7 +271,7 @@ export function OrderManagementSystem() {
         button.textContent = "Processing...";
       }
 
-      // First, accept the order (Pending -> Processing)
+      // Accept the order (Pending -> Processing)
       const acceptResponse = await axios.put(
         `${API_BASE_URL}/orders/accept`,
         {
@@ -258,37 +285,22 @@ export function OrderManagementSystem() {
       if (acceptResponse.data.success) {
         console.log(`Order ${orderId} accepted successfully`);
         
-        // Then, update to packing (Processing -> Packing)
-        const packingResponse = await axios.put(
-          `${API_BASE_URL}/orders/update-to-packing`,
-          {
-            orderId: orderId,
-          },
-          {
-            withCredentials: true
-          }
+        // Update local state
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order.id === orderId
+              ? { ...order, status: "processing" }
+              : order
+          )
         );
 
-        if (packingResponse.data.success) {
-          console.log(`Order ${orderId} status updated to Packing`);
-          // Update local state
-          setOrders((prevOrders) =>
-            prevOrders.map((order) =>
-              order.id === orderId
-                ? { ...order, status: "packing" }
-                : order
-            )
-          );
-
-          // Reduce product stock
-          const order = orders.find((o) => o.id === orderId);
-          if (order && order.items) {
-            await reduceProductStock(order.items);
-          }
-        } else {
-          console.error(`Failed to update order to packing: ${packingResponse.data.message}`);
-          alert(`Failed to update order to packing: ${packingResponse.data.message}`);
+        // Reduce product stock
+        const order = orders.find((o) => o.id === orderId);
+        if (order && order.items) {
+          await reduceProductStock(order.items);
         }
+
+        alert(`Order ${orderId} has been accepted and moved to processing!`);
       } else {
         console.error(`Failed to accept order: ${acceptResponse.data.message}`);
         alert(`Failed to accept order: ${acceptResponse.data.message}`);
@@ -305,6 +317,58 @@ export function OrderManagementSystem() {
       if (button) {
         button.disabled = false;
         button.textContent = "Accept Order";
+      }
+    }
+  }
+
+  const updateOrderToPacking = async (orderId) => {
+    try {
+      console.log("Moving order to packing:", orderId);
+
+      const button = document.querySelector(`#move-to-packing-button-${orderId}`);
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Processing...";
+      }
+
+      const response = await axios.put(
+        `${API_BASE_URL}/orders/update-to-packing`,
+        {
+          orderId: orderId,
+        },
+        {
+          withCredentials: true
+        }
+      );
+
+      if (response.data.success) {
+        console.log(`Order ${orderId} status updated to Packing`);
+        // Update local state
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order.id === orderId
+              ? { ...order, status: "packing" }
+              : order
+          )
+        );
+
+        alert(`Order ${orderId} has been moved to packing!`);
+      } else {
+        console.error(`Failed to update order to packing: ${response.data.message}`);
+        alert(`Failed to update order to packing: ${response.data.message}`);
+      }
+    } catch (error) {
+      console.error("Error updating order to packing:", error);
+      if (error.response?.data?.message) {
+        alert(`Error: ${error.response.data.message}`);
+      } else {
+        alert("Error updating order to packing. Please try again.");
+      }
+    } finally {
+      const button = document.querySelector(`#move-to-packing-button-${orderId}`);
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Move to Packing";
       }
     }
   }
@@ -408,8 +472,8 @@ export function OrderManagementSystem() {
                     <td>${item.sku}</td>
                     <td>${item.category}</td>
                     <td>${item.quantity}</td>
-                    <td>£${item.price}</td>
-                    <td>£${(item.price * item.quantity).toFixed(2)}</td>
+                    <td>${item.price}</td>
+                    <td>${(item.price * item.quantity).toFixed(2)}</td>
                   </tr>
                 `,
                   )
@@ -420,9 +484,9 @@ export function OrderManagementSystem() {
             <div class="section">
               <h3>💰 Payment Summary</h3>
               <div class="total-summary">
-                <p><span class="label">Subtotal:</span> £${order.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}</p>
-                <p><span class="label">Total Amount:</span> <strong>£${order.totalAmount}</strong></p>
-                ${order.codAmount > 0 ? `<div class="cod-amount"><strong>💵 COD Amount:</strong> £${order.codAmount}<br><em>Collect cash on delivery</em></div>` : "<p><span class='label'>Payment Status:</span> Paid Online ✅</p>"}
+                <p><span class="label">Subtotal:</span> $${order.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}</p>
+                <p><span class="label">Total Amount:</span> <strong>$${order.totalAmount}</strong></p>
+                ${order.codAmount > 0 ? `<div class="cod-amount"><strong>💵 COD Amount:</strong> $${order.codAmount}<br><em>Collect cash on delivery</em></div>` : "<p><span class='label'>Payment Status:</span> Paid Online ✅</p>"}
               </div>
             </div>
             
@@ -699,8 +763,8 @@ export function OrderManagementSystem() {
                           <td>${item.sku}</td>
                           <td>${item.category}</td>
                           <td style="text-align: center">${item.quantity}</td>
-                          <td style="text-align: right">£${item.price.toFixed(2)}</td>
-                          <td style="text-align: right"><strong>£${(item.price * item.quantity).toFixed(2)}</strong></td>
+                          <td style="text-align: right">$${item.price.toFixed(2)}</td>
+                          <td style="text-align: right"><strong>$${(item.price * item.quantity).toFixed(2)}</strong></td>
                         </tr>
                       `).join('')}
                     </tbody>
@@ -712,19 +776,19 @@ export function OrderManagementSystem() {
                   <div class="payment-summary">
                     <div class="payment-row">
                       <span>Subtotal (${totalItems} items):</span>
-                      <span>£${subtotal.toFixed(2)}</span>
+                      <span>$${subtotal.toFixed(2)}</span>
                     </div>
                     <div class="payment-row">
                       <span>Shipping & Handling:</span>
-                      <span>£0.00</span>
+                      <span>$0.00</span>
                     </div>
                     <div class="payment-row">
                       <span>Tax:</span>
-                      <span>£0.00</span>
+                      <span>$0.00</span>
                     </div>
                     <div class="payment-row total">
                       <span>TOTAL AMOUNT:</span>
-                      <span>£${order.totalAmount.toFixed(2)}</span>
+                      <span>$${order.totalAmount.toFixed(2)}</span>
                     </div>
                     <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
                       <div class="payment-row">
@@ -775,10 +839,10 @@ export function OrderManagementSystem() {
 
   const confirmPacked = async (orderId) => {
     const buttonId = `#confirm-packed-button-${orderId}`;
-    updateButtonState(buttonId, true, "Confirm Packed");
+    updateButtonState(buttonId, true, "Mark as Shipped");
 
     try {
-      console.log("Order ID being sent:", orderId); // Debugging log
+      console.log("Marking order as shipped:", orderId);
 
       const response = await axios.put(
         `${API_BASE_URL}/orders/update-to-shipped`,
@@ -797,13 +861,21 @@ export function OrderManagementSystem() {
             order.id === orderId ? { ...order, status: "shipped" } : order
           )
         );
+
+        alert(`Order ${orderId} has been marked as shipped and is ready for delivery!`);
       } else {
         console.error(`Failed to update order status: ${response.data.message}`);
+        alert(`Failed to update order status: ${response.data.message}`);
       }
     } catch (error) {
       console.error("Error updating order status:", error);
+      if (error.response?.data?.message) {
+        alert(`Error: ${error.response.data.message}`);
+      } else {
+        alert("Error updating order status. Please try again.");
+      }
     } finally {
-      updateButtonState(buttonId, false, "Confirm Packed");
+      updateButtonState(buttonId, false, "Mark as Shipped");
     }
   };
 
@@ -812,7 +884,7 @@ export function OrderManagementSystem() {
     updateButtonState(buttonId, true, "Mark as Delivered");
 
     try {
-      console.log("Order ID being sent:", orderId); // Debugging log
+      console.log("Marking order as delivered:", orderId);
 
       const response = await axios.put(
         `${API_BASE_URL}/orders/update-to-delivered`,
@@ -831,11 +903,19 @@ export function OrderManagementSystem() {
             order.id === orderId ? { ...order, status: "delivered" } : order
           )
         );
+
+        alert(`Order ${orderId} has been marked as delivered!`);
       } else {
         console.error(`Failed to update order status: ${response.data.message}`);
+        alert(`Failed to update order status: ${response.data.message}`);
       }
     } catch (error) {
       console.error("Error updating order status:", error);
+      if (error.response?.data?.message) {
+        alert(`Error: ${error.response.data.message}`);
+      } else {
+        alert("Error updating order status. Please try again.");
+      }
     } finally {
       updateButtonState(buttonId, false, "Mark as Delivered");
     }
@@ -925,7 +1005,7 @@ export function OrderManagementSystem() {
           createdAt: order.createdAt,
           orderedAt: order.orderedAt,
           orderDate: order.orderedAt,
-          status: order.status.toLowerCase().replace(' ', '_'),
+          status: order.status.toLowerCase(), // Convert status to lowercase to match the UI expectations
           total: order.total,
           totalAmount: order.total,
           statusHistory: order.statusHistory || [],
@@ -1023,7 +1103,7 @@ export function OrderManagementSystem() {
               <div class="section">
                 <h3>Order Details</h3>
                 <p><span class="label">Order Date:</span> ${new Date(order.orderDate).toLocaleDateString()}</p>
-                <p><span class="label">Total Amount:</span> £${order.totalAmount}</p>
+                <p><span class="label">Total Amount:</span> $${order.totalAmount}</p>
               </div>
             </body>
           </html>
@@ -1041,6 +1121,298 @@ export function OrderManagementSystem() {
       });
     } else {
       alert("No orders available to print.");
+    }
+  };
+
+  // Analytics and Reports Functions
+  const getAnalyticsData = () => {
+    if (!orders || orders.length === 0) return null;
+
+    const now = new Date();
+    let startDate;
+
+    // Calculate date range based on selection
+    switch (reportDateRange) {
+      case "last7days":
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case "last30days":
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case "last90days":
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case "custom":
+        startDate = reportFromDate ? new Date(reportFromDate) : new Date(0);
+        const endDate = reportToDate ? new Date(reportToDate) : now;
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    const filteredOrders = orders.filter(order => {
+      const orderDate = new Date(order.orderDate);
+      return orderDate >= startDate && orderDate <= now;
+    });
+
+    // Basic metrics
+    const totalOrders = filteredOrders.length;
+    const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+    // Status breakdown
+    const statusBreakdown = filteredOrders.reduce((acc, order) => {
+      const status = order.status;
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Daily sales data for charts
+    const dailySales = {};
+    filteredOrders.forEach(order => {
+      const date = new Date(order.orderDate).toISOString().split('T')[0];
+      if (!dailySales[date]) {
+        dailySales[date] = { date, orders: 0, revenue: 0 };
+      }
+      dailySales[date].orders += 1;
+      dailySales[date].revenue += order.totalAmount;
+    });
+
+    const chartData = Object.values(dailySales).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Top products
+    const productSales = {};
+    filteredOrders.forEach(order => {
+      order.items.forEach(item => {
+        if (!productSales[item.name]) {
+          productSales[item.name] = { name: item.name, quantity: 0, revenue: 0 };
+        }
+        productSales[item.name].quantity += item.quantity;
+        productSales[item.name].revenue += item.price * item.quantity;
+      });
+    });
+
+    const topProducts = Object.values(productSales)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+
+    return {
+      totalOrders,
+      totalRevenue,
+      averageOrderValue,
+      statusBreakdown,
+      chartData,
+      topProducts,
+      filteredOrders
+    };
+  };
+
+  const generatePDFReport = async () => {
+    setIsGeneratingPDF(true);
+    
+    try {
+      const analyticsData = getAnalyticsData();
+      if (!analyticsData) {
+        alert("No data available for the selected period");
+        return;
+      }
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+
+      // Header
+      doc.setFillColor(102, 126, 234); // Purple color
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.text('🎁 GIFT COMMERCE', 20, 25);
+      
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Order Analytics & Performance Report', 20, 35);
+
+      // Reset text color
+      doc.setTextColor(0, 0, 0);
+
+      // Report metadata
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Generated on: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 20, 55);
+      doc.text(`Report Period: ${reportDateRange.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}`, 20, 65);
+      
+      // Summary metrics
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('📊 Key Performance Metrics', 20, 85);
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      
+      // Create metrics boxes
+      const metrics = [
+        { label: 'Total Orders', value: analyticsData.totalOrders.toString(), x: 20, y: 95 },
+        { label: 'Total Revenue', value: `£${analyticsData.totalRevenue.toFixed(2)}`, x: 110, y: 95 },
+        { label: 'Average Order Value', value: `£${analyticsData.averageOrderValue.toFixed(2)}`, x: 20, y: 115 },
+        { label: 'Completion Rate', value: `${((analyticsData.statusBreakdown.delivered || 0) / analyticsData.totalOrders * 100).toFixed(1)}%`, x: 110, y: 115 }
+      ];
+
+      metrics.forEach(metric => {
+        doc.setFillColor(248, 249, 250);
+        doc.rect(metric.x, metric.y, 80, 15, 'F');
+        doc.setFontSize(10);
+        doc.text(metric.label, metric.x + 2, metric.y + 6);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(metric.value, metric.x + 2, metric.y + 12);
+        doc.setFont('helvetica', 'normal');
+      });
+
+      // Status breakdown
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('📋 Order Status Breakdown', 20, 145);
+
+      let yPos = 155;
+      Object.entries(analyticsData.statusBreakdown).forEach(([status, count]) => {
+        const percentage = (count / analyticsData.totalOrders * 100).toFixed(1);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${status.toUpperCase()}:`, 25, yPos);
+        doc.text(`${count} orders (${percentage}%)`, 80, yPos);
+        yPos += 8;
+      });
+
+      // Top products table
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('🏆 Top Performing Products', 20, yPos + 10);
+
+      const tableData = analyticsData.topProducts.slice(0, 10).map((product, index) => [
+        index + 1,
+        product.name,
+        product.quantity,
+        `£${product.revenue.toFixed(2)}`
+      ]);
+
+      doc.autoTable({
+        startY: yPos + 20,
+        head: [['Rank', 'Product Name', 'Qty Sold', 'Revenue']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [102, 126, 234], textColor: 255 },
+        alternateRowStyles: { fillColor: [248, 249, 250] },
+        styles: { fontSize: 9 },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 15 },
+          1: { cellWidth: 80 },
+          2: { halign: 'center', cellWidth: 25 },
+          3: { halign: 'right', cellWidth: 30 }
+        }
+      });
+
+      // Add new page for detailed orders
+      doc.addPage();
+      
+      // Detailed orders table
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('📝 Detailed Order History', 20, 30);
+
+      const orderTableData = analyticsData.filteredOrders.slice(0, 50).map(order => [
+        order.referenceCode,
+        order.customerName,
+        new Date(order.orderDate).toLocaleDateString(),
+        order.status.toUpperCase(),
+        `£${order.totalAmount.toFixed(2)}`
+      ]);
+
+      doc.autoTable({
+        startY: 40,
+        head: [['Order ID', 'Customer', 'Date', 'Status', 'Amount']],
+        body: orderTableData,
+        theme: 'grid',
+        headStyles: { fillColor: [102, 126, 234], textColor: 255 },
+        alternateRowStyles: { fillColor: [248, 249, 250] },
+        styles: { fontSize: 8 },
+        columnStyles: {
+          0: { cellWidth: 25 },
+          1: { cellWidth: 40 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 25 },
+          4: { halign: 'right', cellWidth: 25 }
+        }
+      });
+
+      // Footer
+      const finalY = doc.lastAutoTable.finalY || 200;
+      doc.setFontSize(10);
+      doc.setTextColor(128, 128, 128);
+      doc.text('Generated by Gift Commerce Admin System', 20, finalY + 20);
+      doc.text(`Page 1-2 | Total Orders Analyzed: ${analyticsData.totalOrders}`, 20, finalY + 30);
+
+      // Save the PDF
+      const pdfBlob = doc.output('blob');
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Gift_Commerce_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      alert('PDF report generated successfully!');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Error generating PDF report. Please try again.');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  const sendReportEmail = async () => {
+    if (!adminEmail) {
+      alert('Please enter an email address');
+      return;
+    }
+
+    setIsSendingEmail(true);
+    
+    try {
+      const analyticsData = getAnalyticsData();
+      if (!analyticsData) {
+        alert("No data available for the selected period");
+        return;
+      }
+
+      // Generate PDF as base64
+      const doc = new jsPDF();
+      // ... (same PDF generation code as above)
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+      // Send email with PDF attachment
+      const response = await axios.post(`${API_BASE_URL}/send-report-email`, {
+        email: adminEmail,
+        reportData: analyticsData,
+        pdfData: pdfBase64,
+        reportPeriod: reportDateRange
+      }, {
+        withCredentials: true
+      });
+
+      if (response.data.success) {
+        alert(`Report successfully sent to ${adminEmail}!`);
+        setEmailDialogOpen(false);
+        setAdminEmail('');
+      } else {
+        alert('Failed to send email. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      alert('Error sending email. Please try again.');
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -1099,11 +1471,13 @@ export function OrderManagementSystem() {
 
             {/* Enhanced Order Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="flex justify-between gap-x-4 w-full px-2 py-1 bg-gray-50 rounded-md border-2 border-gray-400">
-                <TabsTrigger value="accepted" className="flex-1 data-[state=active]:bg-purple-600 data-[state=active]:text-white">Accepted</TabsTrigger>
-                <TabsTrigger value="packed" className="flex-1 data-[state=active]:bg-purple-600 data-[state=active]:text-white">Packed</TabsTrigger>
-                <TabsTrigger value="delivery" className="flex-1 data-[state=active]:bg-purple-600 data-[state=active]:text-white">Delivery</TabsTrigger>
-                <TabsTrigger value="all" className="flex-1 data-[state=active]:bg-purple-600 data-[state=active]:text-white">All</TabsTrigger>
+              <TabsList className="grid grid-cols-6 gap-x-2 w-full px-2 py-1 bg-gray-50 rounded-md border-2 border-gray-400">
+                <TabsTrigger value="pending" className="data-[state=active]:bg-yellow-600 data-[state=active]:text-white">Pending Orders</TabsTrigger>
+                <TabsTrigger value="accepted" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Processing</TabsTrigger>
+                <TabsTrigger value="packed" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Packing</TabsTrigger>
+                <TabsTrigger value="delivery" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Ready for Delivery</TabsTrigger>
+                <TabsTrigger value="all" className="data-[state=active]:bg-gray-600 data-[state=active]:text-white">All Orders</TabsTrigger>
+                <TabsTrigger value="reports" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">📊 Reports & Analytics</TabsTrigger>
               </TabsList>
               <TabsContent value={activeTab}>
                 <div className="rounded-md border bg-white">
@@ -1217,9 +1591,9 @@ export function OrderManagementSystem() {
 
                             <TableCell>
                               <div className="space-y-1">
-                                <div className="font-medium text-lg">£{order.totalAmount}</div>
+                                <div className="font-medium text-lg">${order.totalAmount}</div>
                                 {order.codAmount > 0 && (
-                                  <div className="text-xs text-orange-600 font-medium">💵 COD: £{order.codAmount}</div>
+                                  <div className="text-xs text-orange-600 font-medium">💵 COD: ${order.codAmount}</div>
                                 )}
                                 <div className="text-xs text-muted-foreground">
                                   {order.paymentMethod.replace("_", " ")}
@@ -1276,40 +1650,63 @@ export function OrderManagementSystem() {
                                 ) : null}
                               </Dialog>
 
-                              {activeTab === "accepted" && (
+                              {/* Show Accept Order button for pending orders */}
+                              {order.status === "pending" && (
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  onClick={() => acceptOrder(order.id)}
-                                  className="ml-2"
+                                  variant="default"
+                                  onClick={() => confirmAction("Accept this order and start processing?", () => acceptOrder(order.id))}
+                                  className="ml-2 bg-green-600 hover:bg-green-700"
                                   id={`accept-order-button-${order.id}`}
                                 >
                                   Accept Order
                                 </Button>
                               )}
 
-                              {activeTab === "packed" && (
+                              {/* Show Move to Packing button for processing orders */}
+                              {order.status === "processing" && (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => confirmPacked(order.id)}
-                                  className="ml-2"
-                                  id={`confirm-packed-button-${order.id}`}
+                                  onClick={() => confirmAction("Move this order to packing?", () => updateOrderToPacking(order.id))}
+                                  className="ml-2 border-blue-600 text-blue-600 hover:bg-blue-50"
+                                  id={`move-to-packing-button-${order.id}`}
                                 >
-                                  Confirm Packed
+                                  Start Packing
                                 </Button>
                               )}
 
-                              {activeTab === "delivery" && (
+                              {/* Show Mark as Shipped button for packing orders */}
+                              {order.status === "packing" && (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => markAsDelivered(order.id)}
-                                  className="ml-2"
+                                  onClick={() => confirmAction("Mark this order as shipped?", () => confirmPacked(order.id))}
+                                  className="ml-2 border-orange-600 text-orange-600 hover:bg-orange-50"
+                                  id={`confirm-packed-button-${order.id}`}
+                                >
+                                  Mark as Shipped
+                                </Button>
+                              )}
+
+                              {/* Show Mark as Delivered button for shipped orders */}
+                              {order.status === "shipped" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => confirmAction("Mark this order as delivered?", () => markAsDelivered(order.id))}
+                                  className="ml-2 border-purple-600 text-purple-600 hover:bg-purple-50"
                                   id={`mark-as-delivered-button-${order.id}`}
                                 >
                                   Mark as Delivered
                                 </Button>
+                              )}
+
+                              {/* Show completion status for delivered orders */}
+                              {order.status === "delivered" && (
+                                <Badge className="ml-2 bg-green-100 text-green-800">
+                                  ✅ Completed
+                                </Badge>
                               )}
                             </TableCell>
                           </TableRow>
@@ -1318,6 +1715,331 @@ export function OrderManagementSystem() {
                       ))}
                     </TableBody>
                   </Table>
+                </div>
+              </TabsContent>
+
+              {/* Reports & Analytics Tab */}
+              <TabsContent value="reports" className="space-y-6">
+                <div className="grid gap-6">
+                  {/* Report Controls */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5" />
+                        Report Configuration
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div>
+                          <Label htmlFor="dateRange">Date Range</Label>
+                          <Select value={reportDateRange} onValueChange={setReportDateRange}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select period" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="last7days">Last 7 Days</SelectItem>
+                              <SelectItem value="last30days">Last 30 Days</SelectItem>
+                              <SelectItem value="last90days">Last 90 Days</SelectItem>
+                              <SelectItem value="custom">Custom Range</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {reportDateRange === "custom" && (
+                          <>
+                            <div>
+                              <Label htmlFor="fromDate">From Date</Label>
+                              <Input
+                                type="date"
+                                value={reportFromDate}
+                                onChange={(e) => setReportFromDate(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="toDate">To Date</Label>
+                              <Input
+                                type="date"
+                                value={reportToDate}
+                                onChange={(e) => setReportToDate(e.target.value)}
+                              />
+                            </div>
+                          </>
+                        )}
+                        
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={generatePDFReport}
+                            disabled={isGeneratingPDF}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            {isGeneratingPDF ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Download className="h-4 w-4 mr-2" />
+                                Generate PDF
+                              </>
+                            )}
+                          </Button>
+                          
+                          <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+                            <DialogTrigger asChild>
+                              <Button variant="outline">
+                                <Send className="h-4 w-4 mr-2" />
+                                Email Report
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Send Report via Email</DialogTitle>
+                                <DialogDescription>
+                                  Enter the email address where you want to send the analytics report PDF.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="adminEmail">Email Address</Label>
+                                  <Input
+                                    id="adminEmail"
+                                    type="email"
+                                    placeholder="admin@company.com"
+                                    value={adminEmail}
+                                    onChange={(e) => setAdminEmail(e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
+                                  Cancel
+                                </Button>
+                                <Button 
+                                  onClick={sendReportEmail}
+                                  disabled={isSendingEmail || !adminEmail}
+                                >
+                                  {isSendingEmail ? (
+                                    <>
+                                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                      Sending...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Send className="h-4 w-4 mr-2" />
+                                      Send Report
+                                    </>
+                                  )}
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Analytics Overview */}
+                  {(() => {
+                    const analyticsData = getAnalyticsData();
+                    if (!analyticsData) {
+                      return (
+                        <Card>
+                          <CardContent className="flex items-center justify-center h-32">
+                            <p className="text-muted-foreground">No data available for the selected period</p>
+                          </CardContent>
+                        </Card>
+                      );
+                    }
+
+                    return (
+                      <>
+                        {/* Key Metrics Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <Card>
+                            <CardContent className="p-6">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
+                                  <p className="text-2xl font-bold">{analyticsData.totalOrders}</p>
+                                </div>
+                                <ShoppingBag className="h-8 w-8 text-blue-600" />
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          <Card>
+                            <CardContent className="p-6">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
+                                  <p className="text-2xl font-bold">£{analyticsData.totalRevenue.toFixed(2)}</p>
+                                </div>
+                                <DollarSign className="h-8 w-8 text-green-600" />
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          <Card>
+                            <CardContent className="p-6">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-muted-foreground">Avg Order Value</p>
+                                  <p className="text-2xl font-bold">£{analyticsData.averageOrderValue.toFixed(2)}</p>
+                                </div>
+                                <TrendingUp className="h-8 w-8 text-purple-600" />
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          <Card>
+                            <CardContent className="p-6">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-muted-foreground">Completion Rate</p>
+                                  <p className="text-2xl font-bold">
+                                    {((analyticsData.statusBreakdown.delivered || 0) / analyticsData.totalOrders * 100).toFixed(1)}%
+                                  </p>
+                                </div>
+                                <Activity className="h-8 w-8 text-orange-600" />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        {/* Charts */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {/* Sales Trend Chart */}
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="flex items-center gap-2">
+                                <BarChart3 className="h-5 w-5" />
+                                Sales Trend
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <ResponsiveContainer width="100%" height={300}>
+                                <AreaChart data={analyticsData.chartData}>
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis 
+                                    dataKey="date" 
+                                    tick={{ fontSize: 12 }}
+                                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                                  />
+                                  <YAxis />
+                                  <Tooltip 
+                                    labelFormatter={(value) => `Date: ${new Date(value).toLocaleDateString()}`}
+                                    formatter={(value, name) => [
+                                      name === 'revenue' ? `£${value.toFixed(2)}` : value,
+                                      name === 'revenue' ? 'Revenue' : 'Orders'
+                                    ]}
+                                  />
+                                  <Legend />
+                                  <Area 
+                                    type="monotone" 
+                                    dataKey="revenue" 
+                                    stroke="#8884d8" 
+                                    fill="#8884d8" 
+                                    fillOpacity={0.6}
+                                    name="Revenue"
+                                  />
+                                  <Area 
+                                    type="monotone" 
+                                    dataKey="orders" 
+                                    stroke="#82ca9d" 
+                                    fill="#82ca9d" 
+                                    fillOpacity={0.6}
+                                    name="Orders"
+                                  />
+                                </AreaChart>
+                              </ResponsiveContainer>
+                            </CardContent>
+                          </Card>
+
+                          {/* Order Status Distribution */}
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="flex items-center gap-2">
+                                <PieChartIcon className="h-5 w-5" />
+                                Order Status Distribution
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <ResponsiveContainer width="100%" height={300}>
+                                <PieChart>
+                                  <Pie
+                                    data={Object.entries(analyticsData.statusBreakdown).map(([status, count]) => ({
+                                      name: status.charAt(0).toUpperCase() + status.slice(1),
+                                      value: count,
+                                      percentage: ((count / analyticsData.totalOrders) * 100).toFixed(1)
+                                    }))}
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={80}
+                                    fill="#8884d8"
+                                    dataKey="value"
+                                    label={({ name, percentage }) => `${name}: ${percentage}%`}
+                                  >
+                                    {Object.entries(analyticsData.statusBreakdown).map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={[
+                                        '#fbbf24', '#3b82f6', '#f97316', '#8b5cf6', '#10b981', '#ef4444'
+                                      ][index % 6]} />
+                                    ))}
+                                  </Pie>
+                                  <Tooltip />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        {/* Top Products Table */}
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                              <Package className="h-5 w-5" />
+                              Top Performing Products
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="rounded-md border">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="w-16">Rank</TableHead>
+                                    <TableHead>Product Name</TableHead>
+                                    <TableHead className="text-center">Qty Sold</TableHead>
+                                    <TableHead className="text-right">Revenue</TableHead>
+                                    <TableHead className="text-right">Avg Price</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {analyticsData.topProducts.slice(0, 10).map((product, index) => (
+                                    <TableRow key={index}>
+                                      <TableCell className="font-medium text-center">
+                                        <Badge variant={index < 3 ? "default" : "secondary"}>
+                                          #{index + 1}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell className="font-medium">{product.name}</TableCell>
+                                      <TableCell className="text-center">{product.quantity}</TableCell>
+                                      <TableCell className="text-right font-medium">
+                                        £{product.revenue.toFixed(2)}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        £{(product.revenue / product.quantity).toFixed(2)}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </>
+                    );
+                  })()}
                 </div>
               </TabsContent>
             </Tabs>

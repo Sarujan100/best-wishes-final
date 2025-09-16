@@ -20,6 +20,7 @@ const eventManagementRoutes = require('./routes/eventManagementRoutes');
 const userRoutes = require('./routes/userRoutes');
 const collaborativePurchaseRoutes = require('./routes/collaborativePurchaseRoutes');
 const diagnosticRoutes = require('./routes/diagnosticRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 
 const app = express();
@@ -59,6 +60,7 @@ app.use('/api/events', eventManagementRoutes);
 app.use('/api/collaborative-purchases', collaborativePurchaseRoutes);
 app.use('/api', userRoutes);
 app.use('/api/diagnostic', diagnosticRoutes);
+app.use('/api', reportRoutes);
 
 
 module.exports = app;
