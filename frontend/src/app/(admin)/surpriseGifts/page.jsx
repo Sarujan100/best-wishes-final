@@ -10,6 +10,8 @@ import { Input } from "../../../components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
 import { Calendar, Package, User, Phone, MapPin, Gift, Eye, CheckCircle, Clock, Truck, XCircle, Loader2 } from "lucide-react"
+import ConfirmationModal from "../../../modal/confirmation/ConfirmationModal"
+import NotificationModal from "../../../modal/notification/NotificationModal"
 
 export default function SurpriseGiftManagement() {
   const [surpriseGifts, setSurpriseGifts] = useState([])
@@ -20,6 +22,32 @@ export default function SurpriseGiftManagement() {
   const [showDetails, setShowDetails] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+
+  // Modal states
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [showNotificationModal, setShowNotificationModal] = useState(false)
+  const [modalConfig, setModalConfig] = useState({
+    title: "",
+    message: "",
+    type: "info",
+    onConfirm: () => {}
+  })
+
+  // New modal states
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+    onConfirm: null
+  })
+
+  const [notificationModal, setNotificationModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info"
+  })
 
   // Fetch surprise gifts
   useEffect(() => {
@@ -121,18 +149,18 @@ export default function SurpriseGiftManagement() {
             setSelectedGift({ ...selectedGift, status: newStatus, scheduledAt: scheduledAt })
           }
           
-          alert(`Surprise gift status updated to ${newStatus}. User will be notified via email and notification.`)
+          showNotification("Status Updated", `Surprise gift status updated to ${newStatus}. User will be notified via email and notification.`, "success")
         } else {
           console.error('Failed to update status:', data.message)
-          alert('Failed to update status: ' + data.message)
+          showNotification("Update Failed", `Failed to update status: ${data.message}`, "error")
         }
       } else {
         console.error('Failed to update status, status:', response.status)
-        alert('Failed to update status')
+        showNotification("Update Failed", "Failed to update status", "error")
       }
     } catch (error) {
       console.error('Error updating status:', error)
-      alert('Error updating status')
+      showNotification("Error", "Error updating status", "error")
     }
   }
 
@@ -171,17 +199,17 @@ export default function SurpriseGiftManagement() {
           return true
         } else {
           console.error('Failed to reduce stock:', data.message)
-          alert('Failed to reduce product stock: ' + data.message)
+          showNotification("Stock Update Failed", `Failed to reduce product stock: ${data.message}`, "error")
           return false
         }
       } else {
         console.error('Failed to reduce stock, status:', response.status)
-        alert('Failed to reduce product stock')
+        showNotification("Stock Update Failed", "Failed to reduce product stock", "error")
         return false
       }
     } catch (error) {
       console.error('Error reducing product stock:', error)
-      alert('Error reducing product stock')
+      showNotification("Error", "Error reducing product stock", "error")
       return false
     }
   }
@@ -238,17 +266,17 @@ export default function SurpriseGiftManagement() {
           return true
         } else {
           console.error('Failed to create order summary:', data.message)
-          alert('Failed to create order summary: ' + data.message)
+          showNotification("Order Summary Failed", `Failed to create order summary: ${data.message}`, "error")
           return false
         }
       } else {
         console.error('Failed to create order summary, status:', response.status)
-        alert('Failed to create order summary')
+        showNotification("Order Summary Failed", "Failed to create order summary", "error")
         return false
       }
     } catch (error) {
       console.error('Error creating order summary:', error)
-      alert('Error creating order summary')
+      showNotification("Error", "Error creating order summary", "error")
       return false
     }
   }
@@ -256,8 +284,9 @@ export default function SurpriseGiftManagement() {
   const getStatusBadge = (status) => {
     const statusConfig = {
       'Pending': { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800', icon: Clock },
-      'Scheduled': { variant: 'default', className: 'bg-blue-100 text-blue-800', icon: Calendar },
-      'OutForDelivery': { variant: 'default', className: 'bg-orange-100 text-orange-800', icon: Truck },
+      'AwaitingPayment': { variant: 'default', className: 'bg-orange-100 text-orange-800', icon: Calendar },
+      'Paid': { variant: 'default', className: 'bg-blue-100 text-blue-800', icon: CheckCircle },
+      'OutForDelivery': { variant: 'default', className: 'bg-purple-100 text-purple-800', icon: Truck },
       'Delivered': { variant: 'default', className: 'bg-green-100 text-green-800', icon: CheckCircle },
       'Cancelled': { variant: 'destructive', className: 'bg-red-100 text-red-800', icon: XCircle }
     }
@@ -277,7 +306,8 @@ export default function SurpriseGiftManagement() {
     const stats = {
       total: surpriseGifts.length,
       pending: surpriseGifts.filter(g => g.status === 'Pending').length,
-      scheduled: surpriseGifts.filter(g => g.status === 'Scheduled').length,
+      awaitingPayment: surpriseGifts.filter(g => g.status === 'AwaitingPayment').length,
+      paid: surpriseGifts.filter(g => g.status === 'Paid').length,
       outForDelivery: surpriseGifts.filter(g => g.status === 'OutForDelivery').length,
       delivered: surpriseGifts.filter(g => g.status === 'Delivered').length,
       cancelled: surpriseGifts.filter(g => g.status === 'Cancelled').length,
@@ -289,6 +319,17 @@ export default function SurpriseGiftManagement() {
   const refreshGifts = async () => {
     setLoading(true);
     await fetchSurpriseGifts();
+  };
+
+  // Helper functions for modals
+  const showNotification = (title, message, type = "info") => {
+    setModalConfig({ title, message, type });
+    setShowNotificationModal(true);
+  };
+
+  const showConfirmation = (title, message, onConfirm, type = "warning") => {
+    setModalConfig({ title, message, type, onConfirm });
+    setShowConfirmModal(true);
   };
 
   const stats = getStats()
@@ -353,10 +394,34 @@ export default function SurpriseGiftManagement() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Truck className="h-8 w-8 text-orange-600" />
+              <Calendar className="h-8 w-8 text-orange-600" />
               <div>
-                <p className="text-sm font-medium text-gray-600">In Progress</p>
-                <p className="text-2xl font-bold">{stats.scheduled + stats.outForDelivery}</p>
+                <p className="text-sm font-medium text-gray-600">Awaiting Payment</p>
+                <p className="text-2xl font-bold">{stats.awaitingPayment}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-8 w-8 text-blue-600" />
+              <div>
+                <p className="text-sm font-medium text-gray-600">Paid & Ready</p>
+                <p className="text-2xl font-bold">{stats.paid}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Truck className="h-8 w-8 text-purple-600" />
+              <div>
+                <p className="text-sm font-medium text-gray-600">Out for Delivery</p>
+                <p className="text-2xl font-bold">{stats.outForDelivery}</p>
               </div>
             </div>
           </CardContent>
@@ -397,7 +462,8 @@ export default function SurpriseGiftManagement() {
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Scheduled">Scheduled</SelectItem>
+                  <SelectItem value="AwaitingPayment">Awaiting Payment</SelectItem>
+                  <SelectItem value="Paid">Paid</SelectItem>
                   <SelectItem value="OutForDelivery">Out for Delivery</SelectItem>
                   <SelectItem value="Delivered">Delivered</SelectItem>
                   <SelectItem value="Cancelled">Cancelled</SelectItem>
@@ -475,45 +541,46 @@ export default function SurpriseGiftManagement() {
                       {gift.status === 'Pending' && (
                         <Button
                           size="sm"
-                          onClick={() => updateGiftStatus(gift._id, 'Scheduled')}
+                          onClick={() => updateGiftStatus(gift._id, 'Confirmed')}
                           className="bg-blue-600 hover:bg-blue-700"
                         >
                           Confirm
                         </Button>
                       )}
-                      {gift.status === 'Scheduled' && (
+                      {gift.status === 'AwaitingPayment' && (
+                        <Badge className="bg-orange-100 text-orange-800">
+                          <Clock className="w-3 h-3 mr-1" />
+                          Waiting for Payment
+                        </Badge>
+                      )}
+                      {gift.status === 'Paid' && (
                         <Button
                           size="sm"
                           onClick={async () => {
                             const giftId = gift._id
-                            // Add to processing set to show loading
                             setProcessingGifts(prev => new Set([...prev, giftId]))
                             
                             try {
-                              // Step 1: Reduce product stock
                               console.log('Step 1: Reducing product stock...')
                               const stockReduced = await reduceProductQuantity(giftId)
                               if (!stockReduced) {
-                                return // Exit if stock reduction failed
+                                return
                               }
                               
-                              // Step 2: Create order summary records
                               console.log('Step 2: Creating order summary...')
                               const orderSummaryCreated = await createOrderSummary(giftId)
                               if (!orderSummaryCreated) {
-                                return // Exit if order summary creation failed
+                                return
                               }
                               
-                              // Step 3: Update gift status to OutForDelivery
                               console.log('Step 3: Updating gift status...')
                               await updateGiftStatus(giftId, 'OutForDelivery')
                               
                               console.log('Ship process completed successfully!')
                             } catch (error) {
                               console.error('Error in ship process:', error)
-                              alert('Error processing ship request')
+                              showNotification("Ship Error", "Error processing ship request", "error")
                             } finally {
-                              // Remove from processing set
                               setProcessingGifts(prev => {
                                 const newSet = new Set(prev)
                                 newSet.delete(giftId)
@@ -707,7 +774,7 @@ export default function SurpriseGiftManagement() {
                             console.log('Ship process completed successfully!')
                           } catch (error) {
                             console.error('Error in ship process:', error)
-                            alert('Error processing ship request')
+                            showNotification("Ship Error", "Error processing ship request", "error")
                           } finally {
                             // Remove from processing set
                             setProcessingGifts(prev => {
@@ -753,6 +820,25 @@ export default function SurpriseGiftManagement() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={() => setConfirmationModal({ isOpen: false, title: "", message: "", type: "info", onConfirm: null })}
+        title={confirmationModal.title}
+        message={confirmationModal.message}
+        type={confirmationModal.type}
+        onConfirm={confirmationModal.onConfirm}
+      />
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={notificationModal.isOpen}
+        onClose={() => setNotificationModal({ isOpen: false, title: "", message: "", type: "info" })}
+        title={notificationModal.title}
+        message={notificationModal.message}
+        type={notificationModal.type}
+      />
     </div>
   )
 }

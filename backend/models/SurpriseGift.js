@@ -17,7 +17,9 @@ const surpriseGiftSchema = new mongoose.Schema({
   suggestions: { type: String },
   items: [surpriseGiftItemSchema],
   total: { type: Number, required: true },
-  status: { type: String, enum: ['Pending','Scheduled','OutForDelivery','Delivered','Cancelled'], default: 'Pending' },
+  status: { type: String, enum: ['Pending','Confirmed','AwaitingPayment','Paid','OutForDelivery','Delivered','Cancelled'], default: 'Pending' },
+  paymentStatus: { type: String, enum: ['pending','paid','failed'], default: 'pending' },
+  paymentId: { type: String },
   scheduledAt: { type: Date },
 }, { timestamps: true });
 
