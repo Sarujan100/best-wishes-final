@@ -186,6 +186,8 @@ export function OrderManagementSystem() {
 
       const response = await axios.put(`${API_BASE_URL}/products/reduce-stock`, {
         items: itemsToSend,
+      }, {
+        withCredentials: true
       });
 
       if (response.data.success) {
@@ -237,6 +239,9 @@ export function OrderManagementSystem() {
         `${API_BASE_URL}/orders/update-to-packing`,
         {
           orderId: orderId,
+        },
+        {
+          withCredentials: true
         }
       );
 
@@ -745,6 +750,9 @@ export function OrderManagementSystem() {
         `${API_BASE_URL}/orders/update-to-shipped`,
         {
           orderId,
+        },
+        {
+          withCredentials: true
         }
       );
 
@@ -776,6 +784,9 @@ export function OrderManagementSystem() {
         `${API_BASE_URL}/orders/update-to-delivered`,
         {
           orderId,
+        },
+        {
+          withCredentials: true
         }
       );
 
@@ -841,7 +852,9 @@ export function OrderManagementSystem() {
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/orders/all`);
+      const response = await axios.get(`${API_BASE_URL}/orders/all`, {
+        withCredentials: true
+      });
       const ordersData = response.data.orders.map((order) => ({
         id: order._id,
         ...order,
@@ -855,7 +868,9 @@ export function OrderManagementSystem() {
   useEffect(() => {
     const fetchAllOrders = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/orders/all`)
+        const response = await axios.get(`${API_BASE_URL}/orders/all`, {
+          withCredentials: true
+        })
         console.log('API Response:', response.data.orders);
 
         response.data.orders.forEach((order) => {
