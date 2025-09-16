@@ -184,25 +184,20 @@ const getNavigationData = (role) => {
           icon: Gift,
           items: [
             {
+              title: "Manage Surprise Gifts",
+              icon: Gift,
+              href: "/surpriseGifts",
+            },
+            {
               title: "Track Gift Orders",
               icon: Eye,
-              href: "/admin/gifts/track",
+              href: "/surpriseGifts",
             },
             {
-              title: "Assign to Delivery Staff",
+              title: "Delivery Management",
               icon: UserCheck,
-              href: "/admin/gifts/assign",
-            },
-            {
-              title: "Manage Customizations",
-              icon: Palette,
-              href: "/admin/gifts/customize",
-            },
-            {
-              title: "Special Notes",
-              icon: FileText,
-              href: "/admin/gifts/notes",
-            },
+              href: "/surpriseGifts",
+            }
           ],
         },
         {

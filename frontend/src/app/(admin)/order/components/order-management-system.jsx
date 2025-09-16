@@ -73,10 +73,10 @@ export function OrderManagementSystem() {
         order.items.some((item) => item.name?.toLowerCase().includes(searchTerm.toLowerCase()))) ?? false
 
     const matchesTab =
-      (activeTab === "accepted" && order.status === "processing") ||
+      (activeTab === "accepted" && order.status === "pending") ||
       (activeTab === "packed" && order.status === "packing") ||
       (activeTab === "delivery" && order.status === "shipped") ||
-      (activeTab === "all" && order.status === "delivered") // Show ALL orders regardless of status in All tab
+      (activeTab === "all") // Show ALL orders regardless of status in All tab
 
     // Apply date filtering only for "All" tab
     let matchesDateFilter = true;
@@ -97,6 +97,15 @@ export function OrderManagementSystem() {
     return matchesSearch && matchesTab && matchesDateFilter
   })
 
+  // Debug logging
+  console.log('Active tab:', activeTab);
+  console.log('Total orders:', orders.length);
+  console.log('Filtered orders:', filteredOrders.length);
+  console.log('Orders by status:', orders.reduce((acc, order) => {
+    acc[order.status] = (acc[order.status] || 0) + 1;
+    return acc;
+  }, {}));
+
   const toggleOrderExpansion = (orderId) => {
     setExpandedOrders((prev) =>
       prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId],
@@ -112,7 +121,7 @@ export function OrderManagementSystem() {
   const testProductsEndpoint = async () => {
     try {
       console.log("Testing products endpoint...");
-      const response = await axios.get(`${API_BASE_URL}/api/products/test`);
+      const response = await axios.get(`${API_BASE_URL}/products/test`);
       console.log("Products test response:", response.data);
       alert(`Products test: ${response.data.message}\nTotal products: ${response.data.totalProducts}`);
     } catch (error) {
@@ -235,8 +244,9 @@ export function OrderManagementSystem() {
         button.textContent = "Processing...";
       }
 
-      const response = await axios.put(
-        `${API_BASE_URL}/orders/update-to-packing`,
+      // First, accept the order (Pending -> Processing)
+      const acceptResponse = await axios.put(
+        `${API_BASE_URL}/orders/accept`,
         {
           orderId: orderId,
         },
@@ -245,27 +255,51 @@ export function OrderManagementSystem() {
         }
       );
 
-      if (response.data.success) {
-        console.log(`Order ${orderId} status updated to Packing`);
-        // Update local state instead of refetching all data
-        setOrders((prevOrders) =>
-          prevOrders.map((order) =>
-            order.id === orderId
-              ? { ...order, status: "packing" }
-              : order
-          )
+      if (acceptResponse.data.success) {
+        console.log(`Order ${orderId} accepted successfully`);
+        
+        // Then, update to packing (Processing -> Packing)
+        const packingResponse = await axios.put(
+          `${API_BASE_URL}/orders/update-to-packing`,
+          {
+            orderId: orderId,
+          },
+          {
+            withCredentials: true
+          }
         );
 
-        // Reduce product stock
-        const order = orders.find((o) => o.id === orderId);
-        if (order && order.items) {
-          await reduceProductStock(order.items);
+        if (packingResponse.data.success) {
+          console.log(`Order ${orderId} status updated to Packing`);
+          // Update local state
+          setOrders((prevOrders) =>
+            prevOrders.map((order) =>
+              order.id === orderId
+                ? { ...order, status: "packing" }
+                : order
+            )
+          );
+
+          // Reduce product stock
+          const order = orders.find((o) => o.id === orderId);
+          if (order && order.items) {
+            await reduceProductStock(order.items);
+          }
+        } else {
+          console.error(`Failed to update order to packing: ${packingResponse.data.message}`);
+          alert(`Failed to update order to packing: ${packingResponse.data.message}`);
         }
       } else {
-        console.error(`Failed to update order status: ${response.data.message}`);
+        console.error(`Failed to accept order: ${acceptResponse.data.message}`);
+        alert(`Failed to accept order: ${acceptResponse.data.message}`);
       }
     } catch (error) {
-      console.error("Error updating order status:", error);
+      console.error("Error processing order:", error);
+      if (error.response?.data?.message) {
+        alert(`Error: ${error.response.data.message}`);
+      } else {
+        alert("Error processing order. Please try again.");
+      }
     } finally {
       const button = document.querySelector(`#accept-order-button-${orderId}`);
       if (button) {
@@ -871,9 +905,17 @@ export function OrderManagementSystem() {
         const response = await axios.get(`${API_BASE_URL}/orders/all`, {
           withCredentials: true
         })
-        console.log('API Response:', response.data.orders);
+        console.log('API Response:', response.data);
+        console.log('Orders from API:', response.data.orders);
+
+        if (!response.data.orders || response.data.orders.length === 0) {
+          console.log('No orders found in API response');
+          setOrders([]);
+          return;
+        }
 
         response.data.orders.forEach((order) => {
+          console.log('Order status:', order.status);
           console.log('User Object:', order.user);
         });
 
@@ -931,6 +973,8 @@ export function OrderManagementSystem() {
           return acc;
         }, {});
         console.log('Order status counts:', statusCounts);
+        console.log('Total orders loaded:', ordersData.length);
+        console.log('Sample order:', ordersData[0]);
         
         setOrders(ordersData)
       } catch (error) {

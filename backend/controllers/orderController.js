@@ -1,4 +1,6 @@
 const Order = require('../models/Order');
+const Notification = require('../models/Notification');
+const sendEmail = require('../utils/sendEmail');
 
 // Get order history for logged-in user
 exports.getUserOrderHistory = async (req, res) => {
@@ -35,7 +37,7 @@ exports.createOrder = async (req, res) => {
       user: req.user._id,
       items: normalizedItems,
       total,
-      status: status || 'Processing',
+      status: status || 'Pending',
       orderedAt: new Date(),
     });
 
@@ -55,6 +57,78 @@ exports.getAllOrders = async (req, res) => {
     res.status(200).json({ success: true, orders });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to fetch all orders', error: err.message });
+  }
+};
+
+// Accept order - Update from Pending to Processing
+exports.acceptOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'Order ID is required' });
+    }
+
+    const order = await Order.findById(orderId).populate('user', 'name email');
+    
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Check if order is in Pending status
+    if (order.status !== 'Pending') {
+      return res.status(400).json({ success: false, message: 'Order must be in Pending status to accept' });
+    }
+
+    // Update order status to Processing
+    order.status = 'Processing';
+    order.updatedBy = req.user._id;
+    
+    // Add to status history
+    order.statusHistory.push({
+      status: 'Processing',
+      updatedBy: req.user._id,
+      updatedAt: new Date(),
+      notes: 'Order accepted by admin'
+    });
+
+    await order.save();
+
+    // Send notification to user
+    const notification = new Notification({
+      user: order.user._id,
+      type: 'order_update',
+      title: 'Order Accepted',
+      message: `Your order #${order._id.toString().slice(-6)} has been accepted and is now being processed.`,
+      data: { orderId: order._id, status: 'Processing' }
+    });
+    await notification.save();
+
+    // Send email to user
+    if (order.user && order.user.email) {
+      await sendEmail({
+        to: order.user.email,
+        subject: 'Order Accepted - Best Wishes',
+        text: `Dear ${order.user.name || 'Customer'},\n\nYour order #${order._id.toString().slice(-6)} has been accepted and is now being processed.\n\nThank you for choosing Best Wishes!`,
+        html: `
+          <h2>Order Accepted!</h2>
+          <p>Dear ${order.user.name || 'Customer'},</p>
+          <p>Your order <strong>#${order._id.toString().slice(-6)}</strong> has been accepted and is now being processed.</p>
+          <p>We'll keep you updated on the progress of your order.</p>
+          <p>Thank you for choosing Best Wishes!</p>
+        `
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Order accepted successfully',
+      order: order
+    });
+
+  } catch (error) {
+    console.error('Error accepting order:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 

@@ -1,5 +1,5 @@
 const express = require('express');
-const { getUserOrderHistory, createOrder, getAllOrders, updateOrderToPacking, updateOrderToShipped, updateOrderToDelivered, deleteOrder } = require('../controllers/orderController');
+const { getUserOrderHistory, createOrder, getAllOrders, acceptOrder, updateOrderToPacking, updateOrderToShipped, updateOrderToDelivered, deleteOrder } = require('../controllers/orderController');
 const { isAuthenticated, authorizeRoles } = require('../middleware/authMiddleware');
 const router = express.Router();
 
@@ -11,6 +11,9 @@ router.post('/create', isAuthenticated, createOrder);
 
 // Get all orders for admin and inventory manager
 router.get('/all', isAuthenticated, authorizeRoles('admin', 'inventoryManager'), getAllOrders);
+
+// Accept order - Update from Pending to Processing
+router.put('/accept', isAuthenticated, authorizeRoles('admin', 'inventoryManager'), acceptOrder);
 
 // Update order status to Packing - admin and inventory manager
 router.put('/update-to-packing', isAuthenticated, authorizeRoles('admin', 'inventoryManager'), updateOrderToPacking);
