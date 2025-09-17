@@ -1,15 +1,21 @@
 const Order = require('../models/Order');
 const User = require('../models/User');
+const SurpriseGift = require('../models/SurpriseGift');
 
 // Get all orders for delivery staff management
 exports.getAllOrders = async (req, res) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, page = 1, limit = 10, deliveryStaff } = req.query;
     
     // Build filter object
     const filter = {};
     if (status && status !== 'all') {
       filter.status = status;
+    }
+    
+    // Filter by delivery staff if provided (for delivered items history)
+    if (deliveryStaff) {
+      filter.deliveryStaffId = deliveryStaff;
     }
 
     // Calculate pagination
@@ -50,8 +56,8 @@ exports.getAllOrders = async (req, res) => {
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { status, notes } = req.body;
-    const deliveryStaffId = req.user._id;
+    const { status, notes, deliveryStaffId } = req.body;
+    const currentUserId = req.user._id;
 
     // Validate status
     const validStatuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
@@ -73,8 +79,14 @@ exports.updateOrderStatus = async (req, res) => {
 
     // Update order with delivery staff info
     order.status = status;
-    order.updatedBy = deliveryStaffId;
+    order.updatedBy = currentUserId;
     order.updatedAt = new Date();
+    
+    // Store delivery staff ID and delivery date when marking as delivered
+    if (status === 'Delivered' && deliveryStaffId) {
+      order.deliveryStaffId = deliveryStaffId;
+      order.deliveredAt = new Date();
+    }
     
     // Add status history
     if (!order.statusHistory) {
@@ -83,7 +95,7 @@ exports.updateOrderStatus = async (req, res) => {
     
     order.statusHistory.push({
       status,
-      updatedBy: deliveryStaffId,
+      updatedBy: currentUserId,
       updatedAt: new Date(),
       notes: notes || ''
     });
@@ -320,6 +332,149 @@ exports.searchOrders = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to search orders',
+      error: err.message
+    });
+  }
+};
+
+// Get all surprise gifts for delivery staff management
+exports.getAllSurpriseGifts = async (req, res) => {
+  try {
+    const { status = 'OutForDelivery', page = 1, limit = 10, deliveryStaff } = req.query;
+    
+    // Build filter object - only show OutForDelivery by default
+    const filter = { status: 'OutForDelivery' };
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    
+    // Filter by delivery staff if provided (for delivered items history)
+    if (deliveryStaff) {
+      filter.deliveryStaffId = deliveryStaff;
+    }
+
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+
+    // Fetch surprise gifts with pagination
+    const surpriseGifts = await SurpriseGift.find(filter)
+      .populate('user', 'firstName lastName email phone')
+      .populate('items.product', 'name images salePrice retailPrice')
+      .sort({ scheduledAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Get total count for pagination
+    const totalSurpriseGifts = await SurpriseGift.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      surpriseGifts,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalSurpriseGifts / limit),
+        totalSurpriseGifts,
+        hasNext: page < Math.ceil(totalSurpriseGifts / limit),
+        hasPrev: page > 1
+      }
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch surprise gifts',
+      error: err.message
+    });
+  }
+};
+
+// Update surprise gift status by delivery staff
+exports.updateSurpriseGiftStatus = async (req, res) => {
+  try {
+    const { surpriseGiftId } = req.params;
+    const { status, notes, deliveryStaffId } = req.body;
+
+    // Validate status
+    const validStatuses = ['Pending', 'Scheduled', 'OutForDelivery', 'Delivered', 'Cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
+      });
+    }
+
+    // Find and update surprise gift
+    const surpriseGift = await SurpriseGift.findById(surpriseGiftId);
+    if (!surpriseGift) {
+      return res.status(404).json({
+        success: false,
+        message: 'Surprise gift not found'
+      });
+    }
+
+    // Update surprise gift status
+    surpriseGift.status = status;
+    
+    // Store delivery staff ID and delivery date when marking as delivered
+    if (status === 'Delivered' && deliveryStaffId) {
+      surpriseGift.deliveryStaffId = deliveryStaffId;
+      surpriseGift.deliveredAt = new Date();
+    }
+    
+    await surpriseGift.save();
+
+    // Populate the updated surprise gift
+    const updatedSurpriseGift = await SurpriseGift.findById(surpriseGiftId)
+      .populate('user', 'firstName lastName email phone')
+      .populate('items.product', 'name images salePrice retailPrice');
+
+    res.status(200).json({
+      success: true,
+      message: 'Surprise gift status updated successfully',
+      surpriseGift: updatedSurpriseGift
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update surprise gift status',
+      error: err.message
+    });
+  }
+};
+
+// Get delivery statistics for surprise gifts
+exports.getSurpriseGiftsStats = async (req, res) => {
+  try {
+    // Get all surprise gifts statistics (not filtered by delivery staff since the model doesn't track that)
+    const totalSurpriseGifts = await SurpriseGift.countDocuments({});
+    const pendingSurpriseGifts = await SurpriseGift.countDocuments({ status: 'Pending' });
+    const scheduledSurpriseGifts = await SurpriseGift.countDocuments({ status: 'Scheduled' });
+    const outForDeliverySurpriseGifts = await SurpriseGift.countDocuments({ status: 'OutForDelivery' });
+    const deliveredSurpriseGifts = await SurpriseGift.countDocuments({ status: 'Delivered' });
+    const cancelledSurpriseGifts = await SurpriseGift.countDocuments({ status: 'Cancelled' });
+
+    // Get recent surprise gifts
+    const recentSurpriseGifts = await SurpriseGift.find({})
+      .populate('user', 'firstName lastName email phone')
+      .populate('items.product', 'name images')
+      .sort({ updatedAt: -1 })
+      .limit(5);
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalSurpriseGifts,
+        pendingSurpriseGifts,
+        scheduledSurpriseGifts,
+        outForDeliverySurpriseGifts,
+        deliveredSurpriseGifts,
+        cancelledSurpriseGifts
+      },
+      recentSurpriseGifts
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch surprise gift statistics',
       error: err.message
     });
   }
