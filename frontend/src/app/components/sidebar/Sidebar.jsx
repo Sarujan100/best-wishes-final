@@ -107,6 +107,17 @@ const getNavigationData = (role) => {
           ],
         },
         {
+          title: "Roles Management",
+          icon: UserCheck,
+          items: [
+            {
+              title: "Staff Management",
+              icon: UserCheck,
+              href: "/roles-management",
+            },
+          ],
+        },
+        {
           title: "Products Management",
           icon: Package,
           items: [
@@ -184,25 +195,20 @@ const getNavigationData = (role) => {
           icon: Gift,
           items: [
             {
+              title: "Manage Surprise Gifts",
+              icon: Gift,
+              href: "/surpriseGifts",
+            },
+            {
               title: "Track Gift Orders",
               icon: Eye,
-              href: "/admin/gifts/track",
+              href: "/surpriseGifts",
             },
             {
-              title: "Assign to Delivery Staff",
+              title: "Delivery Management",
               icon: UserCheck,
-              href: "/admin/gifts/assign",
-            },
-            {
-              title: "Manage Customizations",
-              icon: Palette,
-              href: "/admin/gifts/customize",
-            },
-            {
-              title: "Special Notes",
-              icon: FileText,
-              href: "/admin/gifts/notes",
-            },
+              href: "/surpriseGifts",
+            }
           ],
         },
         {
@@ -232,39 +238,9 @@ const getNavigationData = (role) => {
           icon: FileText,
           items: [
             {
-              title: "Sales Reports - Daily",
-              icon: TrendingUp,
-              href: "/admin/reports/sales/daily",
-            },
-            {
-              title: "Sales Reports - Weekly",
-              icon: TrendingUp,
-              href: "/admin/reports/sales/weekly",
-            },
-            {
-              title: "Sales Reports - Monthly",
-              icon: TrendingUp,
-              href: "/admin/reports/sales/monthly",
-            },
-            {
-              title: "Sales Reports - Yearly",
-              icon: TrendingUp,
-              href: "/admin/reports/sales/yearly",
-            },
-            {
-              title: "Custom Date Filter",
-              icon: Calendar,
-              href: "/admin/reports/sales/custom",
-            },
-            {
-              title: "Profit/Loss Breakdown",
-              icon: Calculator,
-              href: "/admin/reports/sales/breakdown",
-            },
-            {
-              title: "Category-Wise Revenue",
-              icon: DollarSign,
-              href: "/admin/reports/revenue/category",
+              title: "Reports Dashboard",
+              icon: BarChart3,
+              href: "/reports",
             },
           ],
         },
@@ -460,9 +436,9 @@ const getNavigationData = (role) => {
       icon: ShoppingBag,
       items: [
         {
-          title: "Products ",
+          title: "Products",
           icon: Search,
-          href: "/productsmanage",
+          href: "/productsInventory",
         },
       ],
     },
@@ -473,17 +449,7 @@ const getNavigationData = (role) => {
         {
           title: "All Orders",
           icon: ShoppingCart,
-          href: "/inventory/orders",
-        },
-        {
-          title: "Pending Orders",
-          icon: Clock,
-          href: "/inventory/orders/pending",
-        },
-        {
-          title: "Completed Orders",
-          icon: CheckCircle,
-          href: "/inventory/orders/completed",
+          href: "/orders",
         },
       ],
     },
@@ -494,12 +460,7 @@ const getNavigationData = (role) => {
         {
           title: "View Low Stock",
           icon: Eye,
-          href: "/inventory/alerts/low-stock",
-        },
-        {
-          title: "Restock Requests",
-          icon: RefreshCw,
-          href: "/inventory/alerts/restock",
+          href: "/productsInventory?filter=low-stock",
         },
       ],
     },
@@ -592,25 +553,27 @@ export default function DashboardSidebar({ role = "admin", title = "Best Wishes"
           `}
         >
           {/* Header */}
-          <div className="p-4 border-b border-gray-200 flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded bg-black">
-                {role === "admin" ? (
-                  <BarChart3 className="h-5 w-5 text-white" />
-                ) : role === "user" ? (
-                  <User className="h-5 w-5 text-white" />
-                ) : (
-                  <ShoppingBag className="h-5 w-5 text-white" />
-                )}
-              </div>
-              <div>
-                <h1 className="text-sm font-semibold" style={{ color: "var(--primary)" }}>
-                  {title}
-                </h1>
-                <p className="text-xs text-gray-500">{defaultSubtitle}</p>
+          {title && (
+            <div className="p-4 border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded bg-black">
+                  {role === "admin" ? (
+                    <BarChart3 className="h-5 w-5 text-white" />
+                  ) : role === "user" ? (
+                    <User className="h-5 w-5 text-white" />
+                  ) : (
+                    <ShoppingBag className="h-5 w-5 text-white" />
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-sm font-semibold" style={{ color: "var(--primary)" }}>
+                    {title}
+                  </h1>
+                  <p className="text-xs text-gray-500">{defaultSubtitle}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Scrollable Navigation */}
           <div className="flex-1 overflow-y-auto">
