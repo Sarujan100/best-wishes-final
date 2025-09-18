@@ -9,9 +9,72 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui
 import { Input } from "../../../components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
-import { Calendar, Package, User, Phone, MapPin, Gift, Eye, CheckCircle, Clock, Truck, XCircle, Loader2 } from "lucide-react"
-import ConfirmationModal from "../../../modal/confirmation/ConfirmationModal"
-import NotificationModal from "../../../modal/notification/NotificationModal"
+
+
+import { Calendar, Package, User, Phone, MapPin, Gift, Eye, CheckCircle, Clock, Truck, XCircle, Loader2, X, AlertCircle } from "lucide-react"
+
+// Toast Notification Component
+const Toast = ({ message, type, isVisible, onClose }) => {
+  useEffect(() => {
+    if (isVisible) {
+      const timer = setTimeout(() => {
+        onClose()
+      }, 4000) // Auto close after 4 seconds
+      return () => clearTimeout(timer)
+    }
+  }, [isVisible, onClose])
+
+  if (!isVisible) return null
+
+  const getToastStyle = () => {
+    switch (type) {
+      case 'success':
+        return 'bg-green-50 border-green-200 text-green-800'
+      case 'error':
+        return 'bg-red-50 border-red-200 text-red-800'
+      case 'info':
+        return 'bg-blue-50 border-blue-200 text-blue-800'
+      default:
+        return 'bg-gray-50 border-gray-200 text-gray-800'
+    }
+  }
+
+  const getIcon = () => {
+    switch (type) {
+      case 'success':
+        return <CheckCircle className="w-5 h-5 text-green-600" />
+      case 'error':
+        return <XCircle className="w-5 h-5 text-red-600" />
+      case 'info':
+        return <AlertCircle className="w-5 h-5 text-blue-600" />
+      default:
+        return <AlertCircle className="w-5 h-5 text-gray-600" />
+    }
+  }
+
+  return (
+    <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+      <div className={`max-w-md p-4 rounded-lg border shadow-lg ${getToastStyle()}`}>
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0">
+            {getIcon()}
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium">{message}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex-shrink-0 ml-2 hover:opacity-70 transition-opacity"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
 
 export default function SurpriseGiftManagement() {
   const [surpriseGifts, setSurpriseGifts] = useState([])
@@ -22,6 +85,27 @@ export default function SurpriseGiftManagement() {
   const [showDetails, setShowDetails] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  
+  // Toast notification state
+  const [toast, setToast] = useState({
+    isVisible: false,
+    message: '',
+    type: 'info'
+  })
+
+  // Function to show toast notification
+  const showToast = (message, type = 'info') => {
+    setToast({
+      isVisible: true,
+      message,
+      type
+    })
+  }
+
+  // Function to hide toast notification
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, isVisible: false }))
+  }
 
   // Modal states
   const [showConfirmModal, setShowConfirmModal] = useState(false)
@@ -149,18 +233,20 @@ export default function SurpriseGiftManagement() {
             setSelectedGift({ ...selectedGift, status: newStatus, scheduledAt: scheduledAt })
           }
           
-          showNotification("Status Updated", `Surprise gift status updated to ${newStatus}. User will be notified via email and notification.`, "success")
+
+          showToast(`Surprise gift status updated to ${newStatus}. User will be notified via email and notification.`, 'success')
         } else {
           console.error('Failed to update status:', data.message)
-          showNotification("Update Failed", `Failed to update status: ${data.message}`, "error")
+          showToast(`Failed to update status: ${data.message}`, 'error')
         }
       } else {
         console.error('Failed to update status, status:', response.status)
-        showNotification("Update Failed", "Failed to update status", "error")
+        showToast('Failed to update status', 'error')
       }
     } catch (error) {
       console.error('Error updating status:', error)
-      showNotification("Error", "Error updating status", "error")
+      showToast('Error updating status', 'error')
+
     }
   }
 
@@ -199,17 +285,23 @@ export default function SurpriseGiftManagement() {
           return true
         } else {
           console.error('Failed to reduce stock:', data.message)
-          showNotification("Stock Update Failed", `Failed to reduce product stock: ${data.message}`, "error")
+
+          showToast(`Failed to reduce product stock: ${data.message}`, 'error')
+
           return false
         }
       } else {
         console.error('Failed to reduce stock, status:', response.status)
-        showNotification("Stock Update Failed", "Failed to reduce product stock", "error")
+
+        showToast('Failed to reduce product stock', 'error')
+
         return false
       }
     } catch (error) {
       console.error('Error reducing product stock:', error)
-      showNotification("Error", "Error reducing product stock", "error")
+
+      showToast('Error reducing product stock', 'error')
+
       return false
     }
   }
@@ -266,20 +358,143 @@ export default function SurpriseGiftManagement() {
           return true
         } else {
           console.error('Failed to create order summary:', data.message)
-          showNotification("Order Summary Failed", `Failed to create order summary: ${data.message}`, "error")
+
+          showToast(`Failed to create order summary: ${data.message}`, 'error')
+
           return false
         }
       } else {
         console.error('Failed to create order summary, status:', response.status)
-        showNotification("Order Summary Failed", "Failed to create order summary", "error")
+
+        showToast('Failed to create order summary', 'error')
+
         return false
       }
     } catch (error) {
       console.error('Error creating order summary:', error)
-      showNotification("Error", "Error creating order summary", "error")
+
+      showToast('Error creating order summary', 'error')
+
       return false
     }
   }
+
+  // const reduceProductQuantity = async (giftId) => {
+  //   try {
+  //     // Find the gift to get its items
+  //     const gift = surpriseGifts.find(g => g._id === giftId)
+  //     if (!gift || !gift.items) {
+  //       console.error('Gift not found or has no items')
+  //       return false
+  //     }
+
+  //     // Extract product IDs and quantities
+  //     const productUpdates = gift.items.map(item => ({
+  //       productId: item.product._id || item.product,
+  //       quantity: item.quantity
+  //     }))
+
+  //     console.log('Reducing stock for products:', productUpdates)
+
+  //     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products/reduce-stock`, {
+  //       method: 'PUT',
+  //       credentials: 'include',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ 
+  //         items: productUpdates
+  //       }),
+  //     })
+      
+  //     if (response.ok) {
+  //       const data = await response.json()
+  //       if (data.success) {
+  //         console.log('Stock reduced successfully:', data.message)
+  //         return true
+  //       } else {
+  //         console.error('Failed to reduce stock:', data.message)
+  //         alert('Failed to reduce product stock: ' + data.message)
+  //         return false
+  //       }
+  //     } else {
+  //       console.error('Failed to reduce stock, status:', response.status)
+  //       alert('Failed to reduce product stock')
+  //       return false
+  //     }
+  //   } catch (error) {
+  //     console.error('Error reducing product stock:', error)
+  //     alert('Error reducing product stock')
+  //     return false
+  //   }
+  // }
+
+  // const createOrderSummary = async (giftId) => {
+  //   try {
+  //     // Find the gift to get its items
+  //     const gift = surpriseGifts.find(g => g._id === giftId)
+  //     if (!gift || !gift.items) {
+  //       console.error('Gift not found or has no items')
+  //       return false
+  //     }
+
+  //     // Create order summary records for each item
+  //     const orderSummaryRecords = gift.items.map(item => {
+  //       const product = item.product
+  //       const salePrice = product.salePrice || product.retailPrice || product.price || 0
+  //       const costPrice = product.costPrice || 0
+  //       const retailPrice = product.retailPrice || product.price || 0
+  //       const profit = salePrice - costPrice
+
+  //       return {
+  //         giftId: giftId,
+  //         productSKU: product.sku || product._id,
+  //         productId: product._id,
+  //         productName: product.name,
+  //         quantity: item.quantity,
+  //         costPrice: costPrice,
+  //         retailPrice: retailPrice,
+  //         salePrice: salePrice,
+  //         profit: profit,
+  //         totalProfit: profit * item.quantity,
+  //         orderDate: new Date().toISOString()
+  //       }
+  //     })
+
+  //     console.log('Creating order summary records:', orderSummaryRecords)
+
+  //     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/order-summary/create`, {
+  //       method: 'POST',
+  //       credentials: 'include',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ 
+  //         records: orderSummaryRecords
+  //       }),
+  //     })
+      
+  //     if (response.ok) {
+  //       const data = await response.json()
+  //       if (data.success) {
+  //         console.log('Order summary created successfully:', data.message)
+  //         return true
+  //       } else {
+  //         console.error('Failed to create order summary:', data.message)
+  //         alert('Failed to create order summary: ' + data.message)
+  //         return false
+  //       }
+  //     } else {
+  //       console.error('Failed to create order summary, status:', response.status)
+  //       alert('Failed to create order summary')
+  //       return false
+  //     }
+  //   } catch (error) {
+  //     console.error('Error creating order summary:', error)
+  //     alert('Error creating order summary')
+  //     return false
+  //   }
+  // }
 
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -579,7 +794,11 @@ export default function SurpriseGiftManagement() {
                               console.log('Ship process completed successfully!')
                             } catch (error) {
                               console.error('Error in ship process:', error)
-                              showNotification("Ship Error", "Error processing ship request", "error")
+
+
+                              showToast('Error processing ship request', 'error')
+
+
                             } finally {
                               setProcessingGifts(prev => {
                                 const newSet = new Set(prev)
@@ -774,7 +993,11 @@ export default function SurpriseGiftManagement() {
                             console.log('Ship process completed successfully!')
                           } catch (error) {
                             console.error('Error in ship process:', error)
-                            showNotification("Ship Error", "Error processing ship request", "error")
+
+
+                            showToast('Error processing ship request', 'error')
+
+
                           } finally {
                             // Remove from processing set
                             setProcessingGifts(prev => {
@@ -821,23 +1044,14 @@ export default function SurpriseGiftManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={confirmationModal.isOpen}
-        onClose={() => setConfirmationModal({ isOpen: false, title: "", message: "", type: "info", onConfirm: null })}
-        title={confirmationModal.title}
-        message={confirmationModal.message}
-        type={confirmationModal.type}
-        onConfirm={confirmationModal.onConfirm}
-      />
 
-      {/* Notification Modal */}
-      <NotificationModal
-        isOpen={notificationModal.isOpen}
-        onClose={() => setNotificationModal({ isOpen: false, title: "", message: "", type: "info" })}
-        title={notificationModal.title}
-        message={notificationModal.message}
-        type={notificationModal.type}
+      {/* Toast Notification */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+
       />
     </div>
   )

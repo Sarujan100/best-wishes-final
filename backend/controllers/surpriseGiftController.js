@@ -99,7 +99,9 @@ exports.getSurpriseGiftById = async (req, res) => {
 
 exports.updateSurpriseGiftStatus = async (req, res) => {
   try {
-    const { status, scheduledAt, paymentId } = req.body;
+
+    const { status, scheduledAt, deliveryStaffId } = req.body;
+
     const { id } = req.params;
     
     const validStatuses = ['Pending','Confirmed','AwaitingPayment','Paid','OutForDelivery','Delivered','Cancelled'];
@@ -133,14 +135,12 @@ exports.updateSurpriseGiftStatus = async (req, res) => {
       updateData.scheduledAt = new Date(scheduledAt);
     }
     
-    // Update payment status based on status
-    if (status === 'Confirmed') {
-      updateData.status = 'AwaitingPayment'; // Auto-transition to awaiting payment
-    } else if (status === 'Paid') {
-      updateData.paymentStatus = 'paid';
-      if (paymentId) {
-        updateData.paymentId = paymentId;
-      }
+
+    // Add delivery staff ID when marking as delivered
+    if (status === 'Delivered' && deliveryStaffId) {
+      updateData.deliveryStaffId = deliveryStaffId;
+      updateData.deliveredAt = new Date();
+
     }
 
     const doc = await SurpriseGift.findByIdAndUpdate(

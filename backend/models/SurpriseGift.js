@@ -21,6 +21,8 @@ const surpriseGiftSchema = new mongoose.Schema({
   paymentStatus: { type: String, enum: ['pending','paid','failed'], default: 'pending' },
   paymentId: { type: String },
   scheduledAt: { type: Date },
+  deliveryStaffId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  deliveredAt: { type: Date },
 }, { timestamps: true });
 
 module.exports = mongoose.model('SurpriseGift', surpriseGiftSchema);
