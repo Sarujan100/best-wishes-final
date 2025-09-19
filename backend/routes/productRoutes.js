@@ -18,6 +18,8 @@ const {
   updateProduct,
   deleteProduct,
   reduceStock,
+  getRandomProducts,
+  getRandomByCategory,
 } = require("../controllers/productController");
 const { validateProduct } = require("../middleware/validation");
 const { isAuthenticated, authorizeRoles } = require("../middleware/authMiddleware");
@@ -46,6 +48,8 @@ router.get("/test", async (req, res) => {
 // Public routes (no authentication required)
 router.get("/", getAllProducts);
 router.get("/filter", getAllProducts);
+router.get("/random", getRandomProducts);
+router.get("/random-by-category", getRandomByCategory);
 router.get("/:id", getProduct);
 
 // Protected routes for admin and inventory manager
