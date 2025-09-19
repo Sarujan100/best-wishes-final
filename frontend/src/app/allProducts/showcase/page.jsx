@@ -5,9 +5,10 @@ import { useSearchParams } from "next/navigation"
 import { ProductShowcase } from "./product-showcase"
 import { FilterSidebar } from "./filter-sidebar"
 import { CategoryExplorer } from "./category-explorer"
-import { Providers } from "./providers"
 import { SortingOptions } from "./sorting-options"
 import { MobileFilterDrawer } from "./mobile-filter-drawer"
+import { Providers } from "./providers"
+import { Toaster } from 'sonner'
 
 export default function ShowcasePage() {
   const searchParams = useSearchParams()
@@ -15,9 +16,7 @@ export default function ShowcasePage() {
 
   return (
     <Providers>
-      <div className="container mx-auto px-4 py-8">
-        
-        {/* Header with cart */}
+      <div className="container mx-auto px-4 py-8">        {/* Header with cart */}
         <div className="flex justify-between items-center mb-6">
           <nav className="flex text-sm">
             <ol className="flex items-center space-x-2">
@@ -142,6 +141,7 @@ export default function ShowcasePage() {
         {/* Mobile filter drawer */}
         <MobileFilterDrawer />
       </div>
+      <Toaster />
     </Providers>
   )
 }

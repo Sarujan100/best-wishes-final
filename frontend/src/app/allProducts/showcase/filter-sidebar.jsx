@@ -36,7 +36,17 @@ export function FilterSidebar() {
   const searchParams = useSearchParams()
   const initialCategory = searchParams.get('category')
   
-  const { category, filters } = useSelector(/** @param {RootState} state */(state) => state.products.filters)
+  const { category, filters } = useSelector(/** @param {RootState} state */(state) => {
+    // Handle both custom store and main store structures
+    if (state.products && state.products.filters) {
+      return state.products.filters;
+    }
+    // Fallback for main store structure
+    return {
+      category: "",
+      filters: {}
+    };
+  })
   const [selectedFilters, setSelectedFilters] = useState({})
   const [priceRange, setPriceRange] = useState([0, 200])
   /** @type {[number[], React.Dispatch<React.SetStateAction<number[]>>]} */

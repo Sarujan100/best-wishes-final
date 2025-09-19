@@ -1,5 +1,6 @@
 import { CategoryShowcase } from "../category-showcase"
 import { Providers } from "../providers"
+import { Toaster } from 'sonner'
 
 export default function CategoryPage({ params }) {
   const { category } = params
@@ -10,6 +11,7 @@ export default function CategoryPage({ params }) {
   return (
     <Providers initialCategory={categoryName}>
       <CategoryShowcase categoryName={categoryName} />
+      <Toaster />
     </Providers>
   )
 }
