@@ -6,31 +6,54 @@ import { FilterSidebar } from "./filter-sidebar"
 import { ProductGrid } from "./product-grid"
 import { CategorySelector } from "./category-selector"
 import { MobileFilterDrawer } from "./mobile-filter-drawer"
-import { getProducts } from "../../actions/productAction"
+import { setProducts, setLoading } from "./store"
+import { getAllProducts, fetchProductsFromDB } from "./sample-data"
 
 export function CategoryShowcase({ categoryName }) {
   const dispatch = useDispatch()
-  const { allProducts, loading } = useSelector((state) => state.productsState)
+  const { products, loading } = useSelector((state) => state.products)
 
   // Load products on component mount
   useEffect(() => {
-    dispatch(getProducts())
+    const loadProducts = async () => {
+      try {
+        dispatch(setLoading(true))
+        
+        // First try to get existing products
+        let allProducts = await getAllProducts()
+        
+        // If no products exist (like on refresh), fetch from DB
+        if (!allProducts || allProducts.length === 0) {
+          console.log('No products in memory, fetching from DB...')
+          allProducts = await fetchProductsFromDB()
+        }
+        
+        dispatch(setProducts(allProducts || []))
+        dispatch(setLoading(false))
+      } catch (error) {
+        console.error('Error loading products:', error)
+        dispatch(setProducts([]))
+        dispatch(setLoading(false))
+      }
+    }
+
+    loadProducts()
   }, [dispatch])
 
   // Filter products by category
-  const filteredProducts = allProducts?.filter(product => 
+  const filteredProducts = products?.filter(product => 
     product.category === categoryName || product.mainCategory === categoryName
   ) || []
 
   // Get products from other categories for the "Shop Other Categories" section
   const otherCategoriesProducts = {}
-  if (allProducts) {
-    const categories = [...new Set(allProducts.map((p) => p.category))].filter(
+  if (products) {
+    const categories = [...new Set(products.map((p) => p.category))].filter(
       (cat) => cat !== categoryName,
     )
 
     categories.forEach((cat) => {
-      const catProducts = allProducts.filter((p) => p.category === cat)
+      const catProducts = products.filter((p) => p.category === cat)
       // Get up to 3 random products from this category
       otherCategoriesProducts[cat] = catProducts.sort(() => 0.5 - Math.random()).slice(0, 3)
     })

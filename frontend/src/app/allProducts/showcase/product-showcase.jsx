@@ -36,7 +36,16 @@ export function ProductShowcase({ filtered }) {
     const loadProducts = async () => {
       try {
         setIsLoadingProducts(true)
-        const products = await getAllProducts()
+        
+        // First try to get existing products
+        let products = await getAllProducts()
+        
+        // If no products exist (like on refresh), fetch from DB
+        if (!products || products.length === 0) {
+          console.log('No products in memory, fetching from DB...')
+          products = await fetchProductsFromDB()
+        }
+        
         dispatch(setProducts(products || []))
         setRealProducts(products || [])
         setIsLoadingProducts(false)

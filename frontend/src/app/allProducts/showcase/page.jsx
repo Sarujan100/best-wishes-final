@@ -9,6 +9,7 @@ import { SortingOptions } from "./sorting-options"
 import { MobileFilterDrawer } from "./mobile-filter-drawer"
 import { Providers } from "./providers"
 import { Toaster } from 'sonner'
+import Navbar from "../../components/navBar/page"
 
 export default function ShowcasePage() {
   const searchParams = useSearchParams()
@@ -16,50 +17,15 @@ export default function ShowcasePage() {
 
   return (
     <Providers>
+      <Navbar />
       <div className="container mx-auto px-4 py-8">        {/* Header with cart */}
-        <div className="flex justify-between items-center mb-6">
-          <nav className="flex text-sm">
-            <ol className="flex items-center space-x-2">
-              <li>
-                <a href="/" className="text-gray-500 hover:text-purple-600">
-                  Home
-                </a>
-              </li>
-              <li className="flex items-center space-x-2">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                </svg>
-                <span className="text-gray-900 font-medium">
-                  {categoryFromUrl ? `${categoryFromUrl} Products` : 'Products'}
-                </span>
-              </li>
-            </ol>
-          </nav>
-
-          <div className="relative">
-            <a href="#" className="flex items-center text-gray-700 hover:text-purple-600">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                0
-              </span>
-            </a>
-          </div>
-        </div>
-
         <h1 className="text-3xl font-bold mb-6">
           {categoryFromUrl ? `${categoryFromUrl} Products` : 'Product Showcase'}
         </h1>
 
-        <div className="flex flex-col md:flex-row gap-6">
+        <div className="flex flex-col md:flex-row gap-6 ">
           {/* Sidebar with filters - hidden on mobile */}
-          <div className="w-full md:w-1/4 hidden md:block">
+          <div className="w-full md:w-1/4 hidden md:block ">
             <Suspense fallback={<div className="h-screen bg-gray-100 animate-pulse rounded-lg"></div>}>
               <FilterSidebar initialCategory={categoryFromUrl} />
             </Suspense>

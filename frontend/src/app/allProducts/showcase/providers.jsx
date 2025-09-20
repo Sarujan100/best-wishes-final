@@ -5,6 +5,7 @@ import { configureStore } from "@reduxjs/toolkit"
 import { productSlice } from "./store"
 import cartSlice from "../../slices/cartSlice"
 import userSlice from "../../slices/userSlice"
+import wishlistSlice from "../../slices/wishlistSlice"
 
 export function Providers({ children, initialCategory }) {
   // Create store with initial category if provided and include necessary slices for cart functionality
@@ -13,6 +14,7 @@ export function Providers({ children, initialCategory }) {
       products: productSlice.reducer,
       cartState: cartSlice,
       userState: userSlice,
+      wishlistState: wishlistSlice,
     },
     preloadedState: initialCategory
       ? {

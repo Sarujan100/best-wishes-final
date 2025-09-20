@@ -72,7 +72,7 @@ export function FilterSidebar() {
         setIsLoading(true)
         const categories = getAllCategories()
         setCategoriesData(categories)
-        console.log("DEBUG: categoriesData structure", JSON.stringify(categories, null, 2));
+        // console.log("DEBUG: categoriesData structure", JSON.stringify(categories, null, 2));
         
         // Get current category data
         if (category) {
@@ -192,7 +192,7 @@ export function FilterSidebar() {
         initialFilters = { [attribute]: [value] };
         setSelectedFilters(initialFilters);
         dispatch(setFilter({ key: attribute, values: [value] }));
-        console.log(`It's a subcategory. Parent: ${mainCategoryKey}, Filter: ${attribute}=${value}`);
+        // console.log(`It's a subcategory. Parent: ${mainCategoryKey}, Filter: ${attribute}=${value}`);
       }
     }
     

@@ -1,6 +1,7 @@
 import { CategoryShowcase } from "../category-showcase"
 import { Providers } from "../providers"
 import { Toaster } from 'sonner'
+import Navbar from "../../../components/navBar/page"
 
 export default function CategoryPage({ params }) {
   const { category } = params
@@ -9,9 +10,12 @@ export default function CategoryPage({ params }) {
   const categoryName = category.charAt(0).toUpperCase() + category.slice(1)
 
   return (
+   <>
+    <Navbar />
     <Providers initialCategory={categoryName}>
       <CategoryShowcase categoryName={categoryName} />
       <Toaster />
     </Providers>
+    </>
   )
 }
