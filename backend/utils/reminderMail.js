@@ -42,7 +42,7 @@ async function sendReminderEmail(user, reminder) {
         productRecommendationsHtml += `
             </div>
             <div style="text-align: center; margin-top: 20px;">
-              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/products" style="display: inline-block; padding: 12px 24px; background-color: #6a1b9a; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">Explore More Gifts</a>
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/allProducts" style="display: inline-block; padding: 12px 24px; background-color: #6a1b9a; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">Explore More Gifts</a>
             </div>
           </div>
         `;

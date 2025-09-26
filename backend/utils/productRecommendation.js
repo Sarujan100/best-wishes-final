@@ -78,7 +78,7 @@ async function getProductRecommendations(occasion, limit = 5) {
       originalPrice: product.retailPrice,
       onSale: product.salePrice > 0,
       rating: product.rating || 3,
-      link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/products/${product._id}`,
+      link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/productDetail/${product._id}`,
       tags: product.tags
     }));
 
@@ -101,7 +101,7 @@ async function getProductRecommendations(occasion, limit = 5) {
           originalPrice: fallbackProduct.retailPrice,
           onSale: fallbackProduct.salePrice > 0,
           rating: fallbackProduct.rating || 3,
-          link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/products/${fallbackProduct._id}`
+          link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/productDetail/${fallbackProduct._id}`
         }];
       }
     } catch (fallbackError) {
