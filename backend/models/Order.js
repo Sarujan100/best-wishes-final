@@ -5,7 +5,21 @@ const orderItemSchema = new mongoose.Schema({
   name: String,
   price: Number,
   quantity: { type: Number, default: 1 },
-  image: String
+  image: String,
+  customization: {
+    id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customization' },
+    selectedQuote: {
+      id: String,
+      text: String,
+      category: String
+    },
+    customMessage: String,
+    fontStyle: String,
+    fontSize: Number,
+    fontColor: String,
+    previewImage: String,
+    specialInstructions: String
+  }
 });
 
 const statusHistorySchema = new mongoose.Schema({
