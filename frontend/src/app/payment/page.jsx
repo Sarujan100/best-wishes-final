@@ -13,6 +13,7 @@ import CollaborativePurchaseModal from "../modal/CollaborativePurchaseModal/Coll
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 console.log("stripePromise:", stripePromise);
+console.log("Stripe Publishable Key:", process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? "✅ Present" : "❌ Missing");
 function PaymentForm({ clientSecret, amount, currency, product, qty }) {
 	const stripe = useStripe();
 	const elements = useElements();
@@ -22,12 +23,29 @@ function PaymentForm({ clientSecret, amount, currency, product, qty }) {
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
-		if (!stripe || !elements) return;
+		if (!stripe || !elements) {
+			toast.error("Stripe not initialized properly");
+			return;
+		}
+		
+		if (!clientSecret) {
+			toast.error("Payment not initialized. Please refresh and try again.");
+			return;
+		}
+		
 		setIsLoading(true);
+		console.log("🔄 Starting payment confirmation with clientSecret:", clientSecret);
+		
 		try {
+			const cardElement = elements.getElement(CardElement);
+			if (!cardElement) {
+				throw new Error("Card element not found");
+			}
+
+			console.log("💳 Confirming payment with Stripe...");
 			const result = await stripe.confirmCardPayment(clientSecret, {
 				payment_method: {
-					card: elements.getElement(CardElement),
+					card: cardElement,
 					billing_details: {
 						name: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || undefined,
 						email: user?.email || undefined,
@@ -35,11 +53,16 @@ function PaymentForm({ clientSecret, amount, currency, product, qty }) {
 				},
 			});
 
+			console.log("💰 Payment result:", result);
+
 			if (result.error) {
+				console.error("❌ Payment failed:", result.error);
 				toast.error(result.error.message || "Payment failed");
 			} else if (result.paymentIntent && result.paymentIntent.status === "succeeded") {
+				console.log("✅ Payment succeeded, creating order...");
 				// Create order after successful payment
 				try {
+					const productTotal = (product.salePrice > 0 ? product.salePrice : product.retailPrice) * qty;
 					const orderData = {
 						items: [{
 							productId: product._id,
@@ -48,24 +71,33 @@ function PaymentForm({ clientSecret, amount, currency, product, qty }) {
 							quantity: qty,
 							image: (product.images && product.images[0] && (product.images[0].url || product.images[0])) || "/placeholder.svg"
 						}],
+						subtotal: productTotal,
+						shippingCost: shipping,
 						total: amount,
 						status: "Processing"
 					};
 
-					await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders/create`, orderData, {
+					console.log("📝 Creating order with data:", orderData);
+					const orderResponse = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders/create`, orderData, {
 						withCredentials: true
 					});
 
+					console.log("📋 Order created:", orderResponse.data);
 					toast.success("Payment successful! Order created.");
+					
+					// Wait a moment before redirecting
+					setTimeout(() => {
+						router.push("/user/history");
+					}, 2000);
 				} catch (orderError) {
-					console.error("Failed to create order:", orderError);
+					console.error("❌ Failed to create order:", orderError);
+					console.error("Order error details:", orderError.response?.data);
 					toast.error("Payment successful, but failed to create order record. Please contact support.");
 				}
-				
-				router.push("/user/history");
 			}
 		} catch (err) {
-			toast.error("Payment error");
+			console.error("❌ Payment error:", err);
+			toast.error(err.message || "Payment error");
 		} finally {
 			setIsLoading(false);
 		}
@@ -129,6 +161,7 @@ export default function PaymentPage() {
 		const createIntent = async () => {
 			if (!product || !amount) return;
 			try {
+				console.log("🚀 Creating payment intent with amount:", Math.round(amount * 100), "cents");
 				const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/payments/create-intent`, {
 					amount: Math.round(amount * 100),
 					currency,
@@ -138,10 +171,13 @@ export default function PaymentPage() {
 						name: product.name,
 					},
 				}, { withCredentials: true });
+				
+				console.log("✅ Payment intent created:", res.data);
 				setClientSecret(res.data.clientSecret);
 			} catch (e) {
-				console.error(e);
-				toast.error("Failed to initialize payment");
+				console.error("❌ Failed to create payment intent:", e);
+				console.error("Error details:", e.response?.data);
+				toast.error(e.response?.data?.message || "Failed to initialize payment");
 			}
 		};
 		createIntent();

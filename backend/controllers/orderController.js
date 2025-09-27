@@ -18,7 +18,7 @@ exports.getUserOrderHistory = async (req, res) => {
 // Create order (after successful payment)
 exports.createOrder = async (req, res) => {
   try {
-    const { items, total, status } = req.body;
+    const { items, total, status, subtotal, shippingCost } = req.body;
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: 'Items are required' });
     }
@@ -34,9 +34,15 @@ exports.createOrder = async (req, res) => {
       image: i.image || (i.product && i.product.images && (i.product.images[0]?.url || i.product.images[0])) || ''
     }));
 
+    // Calculate subtotal if not provided
+    const calculatedSubtotal = subtotal || normalizedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const calculatedShippingCost = shippingCost !== undefined ? shippingCost : (calculatedSubtotal > 0 ? 10 : 0);
+
     const order = await Order.create({
       user: req.user._id,
       items: normalizedItems,
+      subtotal: calculatedSubtotal,
+      shippingCost: calculatedShippingCost,
       total,
       status: status || 'Pending',
       orderedAt: new Date(),

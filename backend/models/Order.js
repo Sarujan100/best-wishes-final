@@ -18,7 +18,9 @@ const statusHistorySchema = new mongoose.Schema({
 const orderSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   items: [orderItemSchema],
-  total: { type: Number, required: true },
+  subtotal: { type: Number }, // Items total before shipping
+  shippingCost: { type: Number, default: 0 }, // Shipping cost
+  total: { type: Number, required: true }, // Final total including shipping
   status: { type: String, enum: ['Pending', 'Processing', 'Packing', 'Shipped', 'Delivered', 'Cancelled'], default: 'Pending' },
   orderedAt: { type: Date, default: Date.now },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
