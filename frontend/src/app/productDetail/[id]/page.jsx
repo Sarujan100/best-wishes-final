@@ -20,6 +20,8 @@ import CollaborativePurchaseModal from '../../modal/CollaborativePurchaseModal/C
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Footer from "../../components/footer/page"
+import ProductDetails from "../../components/ProductDetails"
+import ImageMagnifier from "../../components/ImageMagnifier"
 import { useRouter } from 'next/navigation';
 
 function ProductDetailPage() {
@@ -34,7 +36,21 @@ function ProductDetailPage() {
   const [mainImageError, setMainImageError] = useState(false);
   const [thumbnailErrors, setThumbnailErrors] = useState({});
   const [productImageErrors, setProductImageErrors] = useState({});
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [randomProducts, setRandomProducts] = useState([]);
+  const [randomLoading, setRandomLoading] = useState(false);
   const router = useRouter();
+
+  // Currency formatter for UK pounds
+  const formatGBP = (value) => {
+    const num = typeof value === 'number' ? value : Number(value || 0);
+    try {
+      return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(num);
+    } catch {
+      return `£${num.toFixed(2)}`;
+    }
+  };
 
 
   // Fetch specific product by ID
@@ -82,6 +98,54 @@ function ProductDetailPage() {
   useEffect(() => {
     dispatch(getProducts());
   }, [dispatch])
+
+  // Fetch related products by same main category
+  useEffect(() => {
+    const fetchRelated = async () => {
+      if (!product?.mainCategory) return;
+      try {
+        setRelatedLoading(true);
+        const url = `${process.env.NEXT_PUBLIC_API_URL}/products?category=${encodeURIComponent(product.mainCategory)}&limit=8&page=1`;
+        const res = await axios.get(url);
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          const items = res.data.data.filter((p) => p._id !== product._id);
+          setRelatedProducts(items);
+        } else {
+          setRelatedProducts([]);
+        }
+      } catch (e) {
+        setRelatedProducts([]);
+        console.error('Failed to fetch related products:', e);
+      } finally {
+        setRelatedLoading(false);
+      }
+    };
+
+    fetchRelated();
+  }, [product?.mainCategory, product?._id]);
+
+  // Fetch a flat random sample from all products (15 items)
+  useEffect(() => {
+    const fetchRandom = async () => {
+      try {
+        setRandomLoading(true);
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products/random?limit=15`);
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setRandomProducts(res.data.data);
+        } else {
+          setRandomProducts([]);
+        }
+      } catch (e) {
+        console.error('Failed to fetch random products:', e);
+        setRandomProducts([]);
+      } finally {
+        setRandomLoading(false);
+      }
+    };
+    fetchRandom();
+  }, []);
+
+  // Removed category-based sampler. Showing a flat random grid instead.
 
   // Get the main product image
   const getMainImage = () => {
@@ -143,14 +207,19 @@ function ProductDetailPage() {
   return (
     <>
       <div className='w-full justify-center flex-co px-4 sm:px-8 md:px-16 lg:px-24'>  <Navbar />
-        <div className='w-full flex flex-col lg:flex-row h-auto mt-[20px]'>
+        <div className='w-full grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto mt-[20px]'>
           {/* Left Section - Image & Description */}
-          <div className='flex-col justify-center w-full lg:w-[60%]'>
-            <div className='w-full h-[300px] sm:h-[400px] md:h-[500px] bg-gray-300 rounded-[10px] overflow-hidden border-1 border-[#D9D9D9]/50'>
-              <img
+          <div className='flex-col justify-center col-span-12 lg:col-span-7'>
+            <div className='w-full max-w-[640px] mx-auto bg-gray-100 rounded-[10px] overflow-hidden border-1 border-[#D9D9D9]/50 p-2'>
+              <ImageMagnifier
                 src={getMainImage()}
                 alt={product.name}
-                className="w-full h-full object-cover rounded-[10px]"
+                lensSize={100}
+                zoomScale={2.0}
+                previewWidth={280}
+                previewHeight={280}
+                showPreview={false}
+                className="w-full h-full"
                 onError={() => {
                   if (!mainImageError) setMainImageError(true);
                 }}
@@ -182,7 +251,7 @@ function ProductDetailPage() {
           </div>
 
           {/* Right Section - Info & Actions */}
-          <div className='w-full lg:w-[40%] h-auto lg:pl-[20px] mt-8 lg:mt-0'>
+          <div className='col-span-12 lg:col-span-5 h-auto lg:pl-[20px] mt-8 lg:mt-0'>
             <div className='flex-col justify-center space-y-[15px]'>
               <div className='flex justify-between items-center'>
                 <span className='font-extra-large font-bold'>{product.name}</span>
@@ -194,12 +263,25 @@ function ProductDetailPage() {
                 </div>
                 <span>(27 Ratings)</span>
               </div>
-              <div className='flex items-center space-x-[15px]'>
-                <span className='font-extra-large font-bold'>US ${product.salePrice}</span>
-                {product.salePrice > 0 && (
-                  <span className='font-content line-through'>US ${product.retailPrice}</span>
-                )}
+              <div className='flex items-center gap-3'>
+                <span className='font-extra-large font-bold text-[#822BE2]'>
+                  {formatGBP(product.salePrice > 0 ? product.salePrice : product.retailPrice)}
+                </span>
+                {product.salePrice > 0 && product.retailPrice ? (
+                  <span className='font-content line-through text-red-500'>
+                    {formatGBP(product.retailPrice)}
+                  </span>
+                ) : null}
               </div>
+              {product.salePrice > 0 && product.retailPrice ? (
+                <div className='text-sm text-green-600'>
+                  {(() => {
+                    const save = Math.max((product.retailPrice || 0) - (product.salePrice || 0), 0);
+                    const pct = product.retailPrice ? Math.round((save / product.retailPrice) * 100) : 0;
+                    return save > 0 ? `Save ${formatGBP(save)} (${pct}%)` : null;
+                  })()}
+                </div>
+              ) : null}
               <div className='flex items-center space-x-[10px]'>
                 <span className='font-medium'>Quantity</span>
                 <button onClick={decreaseQuantity} className='border bg-[#D9D9D9] rounded-[5px] w-[25px] h-[25px]'>-</button>
@@ -217,7 +299,7 @@ function ProductDetailPage() {
                 className="flex justify-center items-center border text-white bg-[#822BE2] rounded-[8px] w-full h-[50px] gap-2 font-bold cursor-pointer hover:opacity-90"
                 onClick={() => router.push(`/payment?productId=${product._id}&qty=${quantity}`)}
               >
-                Get now - US ${(product.salePrice * quantity).toFixed(2)}
+                {`Get now - ${formatGBP(((product.salePrice > 0 ? product.salePrice : product.retailPrice) || 0) * quantity)}`}
               </button>
               {/* <div className="w-full flex flex-col sm:flex-row gap-[15px]">
                 {product.salePrice >= 10 && (
@@ -258,12 +340,7 @@ function ProductDetailPage() {
           </div>
         </div>
         <div className='flex-col items-start mt-[40px] w-full'>
-          <div className='pb-[15px]'>
-            <span className='font-medium text-lg'>Description</span>
-          </div>
-          <p className='font-content text-gray-600'>
-            {product.detailedDescription || product.shortDescription}
-          </p>
+          <ProductDetails product={product} />
         </div>
 
         {/* all Products */}
@@ -337,71 +414,112 @@ function ProductDetailPage() {
         )}
       </div> */}
 
-        <div className="mt-[50px] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 ">
-          {allProducts && allProducts.length > 0 ? (
-            allProducts.slice(0, 12).map((product) => (
-              <Link key={product._id} href={`/productDetail/${product._id}`} className="block">
-                <CardContent className="p-0 border-1 border-[#D9D9D9]/50 rounded-[10px]">
-                  <div className="relative">
-                    <Image
-                      src={product.images[0].url || "/placeholder.svg"}
-                      alt={product.name}
-                      width={200}
-                      height={200}
-                      className="w-full aspect-square object-cover rounded-t-lg"
-                    />
-                    <div className="absolute top-2 left-2 bg-red-100 rounded-full p-1">
-                      <Flame className="text-red-500 w-3 h-3 sm:w-4 sm:h-4" />
-                    </div>
-                    <div className="absolute top-2 right-2 bg-purple-100 rounded-full p-1 cursor-pointer hover:bg-purple-200 transition-colors"
-                      onClick={e => {
-                        e.preventDefault();
-                        if (!isAuthenticated) return alert('Please login to add to wishlist');
-                        dispatch(addToWishlist(product));
-                        toast.success('Added to wishlist!');
-                      }}
-                    >
-                      <Heart className="text-purple-500 w-3 h-3 sm:w-4 sm:h-4" />
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-medium text-sm sm:text-base truncate">{product.name}</h3>
-                    <p className="font-semibold text-purple-600 text-sm sm:text-base">US ${product.price || product.retailPrice}</p>
-                    <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
-                      <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
-                        {Array.from({ length: 5 }, (_, i) => {
-                          const fullStars = Math.floor(product.rating || 0);
-                          const hasHalfStar = (product.rating || 0) - fullStars >= 0.5;
-                          if (i < fullStars) {
-                            return <AiFillStar key={i} />;
-                          } else if (i === fullStars && hasHalfStar) {
-                            return <AiTwotoneStar key={i} />;
-                          } else {
-                            return <AiOutlineStar key={i} />;
-                          }
-                        })}
+        {/* Related Products */}
+        <div className="mt-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Related Products</h2>
+            {product?.mainCategory && (
+              <span className="text-sm text-gray-500">Category: {product.mainCategory}</span>
+            )}
+          </div>
+          {relatedLoading ? (
+            <div className="col-span-full text-center py-12">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mx-auto"></div>
+              <p className="mt-3 text-gray-600">Loading related products...</p>
+            </div>
+          ) : relatedProducts.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {relatedProducts.map((rp) => {
+                const imgSrc = rp?.images?.[0]?.url || '/placeholder.svg';
+                return (
+                  <Link key={rp._id} href={`/productDetail/${rp._id}`} className="block group">
+                    <CardContent className="p-0 border-1 border-[#D9D9D9]/50 rounded-[10px] overflow-hidden">
+                      <div className="relative bg-gray-50">
+                        <Image
+                          src={imgSrc}
+                          alt={rp.name}
+                          width={200}
+                          height={200}
+                          className="w-full aspect-square object-cover group-hover:scale-[1.02] transition-transform"
+                        />
                       </div>
-                    </div>
-                    <Button
-                      className="mt-2 w-full bg-purple-600 hover:bg-purple-700 text-white"
-                      onClick={e => {
-                        e.preventDefault();
-                        if (!isAuthenticated) return alert('Please login to add to cart');
-                        dispatch(addToCart({ product, quantity: 1 }));
-                        toast.success('Added to cart!');
-                      }}
-                    >
-                      Add to Cart
-                    </Button>
-                  </div>
-                </CardContent>
-              </Link>
-            ))
+                      <div className="p-3">
+                        <h3 className="font-medium text-sm sm:text-base truncate">{rp.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-purple-600 text-sm sm:text-base">
+                            {formatGBP(rp?.salePrice > 0 ? rp.salePrice : rp.retailPrice)}
+                          </span>
+                          {rp?.salePrice > 0 && rp?.retailPrice ? (
+                            <span className="text-xs text-red-500 line-through">
+                              {formatGBP(rp.retailPrice)}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
+                          {Array.from({ length: 5 }, (_, i) => {
+                            const full = Math.floor(rp.rating || 0);
+                            const hasHalf = (rp.rating || 0) - full >= 0.5;
+                            if (i < full) return <AiFillStar key={i} />;
+                            if (i === full && hasHalf) return <AiTwotoneStar key={i} />;
+                            return <AiOutlineStar key={i} />;
+                          })}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Link>
+                );
+              })}
+            </div>
           ) : (
             <div className="col-span-full text-center py-12">
-              <p className="text-red-500 text-lg">Server currently busy!</p>
+              <p className="text-gray-600">No related products found.</p>
             </div>
           )}
+        </div>
+
+        {/* Flat random grid: 15 products, 3 rows x 5 cols on large screens */}
+        <div className="mt-10">
+          <h2 className="text-lg font-semibold mb-4">Best Picks</h2>
+          {randomLoading ? (
+            <div className="col-span-full text-center py-10">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mx-auto"></div>
+              <p className="mt-3 text-gray-600">Loading products...</p>
+            </div>
+          ) : randomProducts.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {randomProducts.slice(0, 15).map((rp) => {
+                const imgSrc = rp?.images?.[0]?.url || '/placeholder.svg';
+                return (
+                  <Link key={rp._id} href={`/productDetail/${rp._id}`} className="block group">
+                    <CardContent className="p-0 border-1 border-[#D9D9D9]/50 rounded-[10px] overflow-hidden">
+                      <div className="relative bg-gray-50">
+                        <Image
+                          src={imgSrc}
+                          alt={rp.name}
+                          width={200}
+                          height={200}
+                          className="w-full aspect-square object-cover group-hover:scale-[1.02] transition-transform"
+                        />
+                      </div>
+                      <div className="p-3">
+                        <h3 className="font-medium text-sm sm:text-base truncate">{rp.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-purple-600 text-sm sm:text-base">
+                            {formatGBP(rp?.salePrice > 0 ? rp.salePrice : rp.retailPrice)}
+                          </span>
+                          {rp?.salePrice > 0 && rp?.retailPrice ? (
+                            <span className="text-xs text-red-500 line-through">
+                              {formatGBP(rp.retailPrice)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
 
 
