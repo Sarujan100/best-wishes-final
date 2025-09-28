@@ -29,6 +29,7 @@ import {
   RefreshCw,
   Download,
   Printer,
+  Loader2,
 } from "lucide-react"
 
 const statusColors = {
@@ -56,6 +57,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export function OrderManagementSystem() {
   const [orders, setOrders] = useState([])
+  const [surpriseGifts, setSurpriseGifts] = useState([])
+  const [collaborativeGifts, setCollaborativeGifts] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [activeTab, setActiveTab] = useState("accepted")
@@ -64,8 +67,42 @@ export function OrderManagementSystem() {
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [fromDate, setFromDate] = useState(null)
   const [toDate, setToDate] = useState(null)
+  const [loadingStates, setLoadingStates] = useState({}) // Track loading state for each button
 
-  const filteredOrders = orders.filter((order) => {
+  // Combine all orders (regular orders, surprise gifts, collaborative gifts)
+  const allOrders = [
+    ...orders.map(order => ({ ...order, orderType: 'regular' })),
+    ...surpriseGifts.map(gift => ({
+      ...gift,
+      orderType: 'surprise',
+      id: gift._id,
+      createdAt: gift.createdAt || gift.orderDate,
+      orderDate: gift.createdAt || gift.orderDate,
+      recipientName: gift.recipientName || `${gift.user?.firstName || ''} ${gift.user?.lastName || ''}`.trim(),
+      recipientPhone: gift.recipientPhone || gift.user?.phone || 'N/A',
+      shippingAddress: gift.recipientAddress || gift.shippingAddress || 'Address not provided',
+      totalAmount: gift.total || 0,
+      customerName: gift.recipientName || `${gift.user?.firstName || ''} ${gift.user?.lastName || ''}`.trim(),
+      customerPhone: gift.recipientPhone || gift.user?.phone || 'N/A',
+      customerEmail: gift.user?.email || 'N/A',
+    })),
+    ...collaborativeGifts.map(gift => ({
+      ...gift,
+      orderType: 'collaborative',
+      id: gift._id,
+      createdAt: gift.createdAt || gift.orderDate,
+      orderDate: gift.createdAt || gift.orderDate,
+      recipientName: gift.recipientName || `${gift.user?.firstName || ''} ${gift.user?.lastName || ''}`.trim(),
+      recipientPhone: gift.recipientPhone || gift.user?.phone || 'N/A',
+      shippingAddress: gift.recipientAddress || gift.shippingAddress || 'Collaborative Purchase - Multiple Recipients',
+      totalAmount: gift.total || gift.totalAmount || 0,
+      customerName: `Collaborative Gift (${gift.participants?.length || 0} participants)`,
+      customerPhone: gift.user?.phone || 'N/A',
+      customerEmail: gift.user?.email || 'N/A',
+    }))
+  ];
+
+  const filteredOrders = allOrders.filter((order) => {
     if (!order || !order.user || !order.items) return false
 
     const matchesSearch =
@@ -77,7 +114,7 @@ export function OrderManagementSystem() {
       (activeTab === "accepted" && order.status === "processing") ||
       (activeTab === "packed" && order.status === "packing") ||
       (activeTab === "delivery" && order.status === "shipped") ||
-      (activeTab === "all") // Show ALL orders regardless of status in All tab
+      (activeTab === "all" && order.status === "delivered") // Show only completed orders in All tab
 
     // Apply date filtering only for "All" tab
     let matchesDateFilter = true;
@@ -100,10 +137,17 @@ export function OrderManagementSystem() {
 
   // Debug logging
   console.log('Active tab:', activeTab);
-  console.log('Total orders:', orders.length);
+  console.log('Total regular orders:', orders.length);
+  console.log('Total surprise gifts:', surpriseGifts.length);
+  console.log('Total collaborative gifts:', collaborativeGifts.length);
+  console.log('Total combined orders:', allOrders.length);
   console.log('Filtered orders:', filteredOrders.length);
-  console.log('Orders by status:', orders.reduce((acc, order) => {
+  console.log('Orders by status:', allOrders.reduce((acc, order) => {
     acc[order.status] = (acc[order.status] || 0) + 1;
+    return acc;
+  }, {}));
+  console.log('Orders by type:', allOrders.reduce((acc, order) => {
+    acc[order.orderType] = (acc[order.orderType] || 0) + 1;
     return acc;
   }, {}));
 
@@ -113,23 +157,14 @@ export function OrderManagementSystem() {
     )
   }
 
-  const confirmAction = (message, action) => {
-    if (window.confirm(message)) {
-      action();
-    }
-  };
+  const setButtonLoading = (orderId, actionType, isLoading) => {
+    setLoadingStates(prev => ({
+      ...prev,
+      [`${orderId}-${actionType}`]: isLoading
+    }))
+  }
 
-  const testProductsEndpoint = async () => {
-    try {
-      console.log("Testing products endpoint...");
-      const response = await axios.get(`${API_BASE_URL}/products/test`);
-      console.log("Products test response:", response.data);
-      alert(`Products test: ${response.data.message}\nTotal products: ${response.data.totalProducts}`);
-    } catch (error) {
-      console.error("Error testing products endpoint:", error);
-      alert(`Error testing products: ${error.message}`);
-    }
-  };
+
 
   const reduceProductStock = async (orderItems) => {
     try {
@@ -164,7 +199,6 @@ export function OrderManagementSystem() {
 
       if (validItems.length === 0) {
         // console.warn("No valid product IDs found in order items");
-        alert("Warning: No valid product IDs found. Stock reduction skipped.");
         return;
       }
 
@@ -205,7 +239,6 @@ export function OrderManagementSystem() {
         // Removed alert for successful stock update
       } else {
         // console.error("Failed to update product stock:", response.data.message);
-        alert(`Failed to update stock: ${response.data.message}`);
       }
     } catch (error) {
       // console.error("Error updating product stock:", error);
@@ -223,40 +256,26 @@ export function OrderManagementSystem() {
         const itemsList = insufficientItems.map(item => 
           `${item.productName}: requested ${item.requestedQuantity}, available ${item.availableStock}`
         ).join('\n');
-        alert(`Insufficient stock for:\n${itemsList}`);
       } else if (error.response?.data?.errors) {
         const errorMessages = error.response.data.errors.map(err => err.msg || err).join('\n');
-        alert(`Validation errors:\n${errorMessages}`);
       } else if (error.response?.data?.message) {
-        alert(`Error: ${error.response.data.message}`);
       } else {
-        alert("Error updating product stock. Please try again.");
       }
     }
   };
 
   const acceptOrder = async (orderId) => {
     try {
-      console.log("Order ID being sent:", orderId); // Debugging log
+      console.log("Order ID being sent:", orderId);
+      setButtonLoading(orderId, 'accept', true);
 
-      const button = document.querySelector(`#accept-order-button-${orderId}`);
-      if (button) {
-        button.disabled = true;
-        button.textContent = "Processing...";
-      }
-
-      // Accept the order (Pending -> Processing)
-      const acceptResponse = await axios.put(
+      const response = await axios.put(
         `${API_BASE_URL}/orders/accept`,
-        {
-          orderId: orderId,
-        },
-        {
-          withCredentials: true
-        }
+        { orderId: orderId },
+        { withCredentials: true }
       );
 
-      if (acceptResponse.data.success) {
+      if (response.data.success) {
         console.log(`Order ${orderId} accepted successfully`);
         
         // Update local state
@@ -273,50 +292,30 @@ export function OrderManagementSystem() {
         if (order && order.items) {
           await reduceProductStock(order.items);
         }
-
-        alert(`Order ${orderId} has been accepted and moved to processing!`);
       } else {
-        console.error(`Failed to accept order: ${acceptResponse.data.message}`);
-        alert(`Failed to accept order: ${acceptResponse.data.message}`);
+        console.error(`Failed to accept order: ${response.data.message}`);
       }
     } catch (error) {
       console.error("Error processing order:", error);
-      if (error.response?.data?.message) {
-        alert(`Error: ${error.response.data.message}`);
-      } else {
-        alert("Error processing order. Please try again.");
-      }
     } finally {
-      const button = document.querySelector(`#accept-order-button-${orderId}`);
-      if (button) {
-        button.disabled = false;
-        button.textContent = "Accept Order";
-      }
+      setButtonLoading(orderId, 'accept', false);
     }
   }
 
   const updateOrderToPacking = async (orderId) => {
     try {
       console.log("Moving order to packing:", orderId);
-
-      const button = document.querySelector(`#move-to-packing-button-${orderId}`);
-      if (button) {
-        button.disabled = true;
-        button.textContent = "Processing...";
-      }
+      setButtonLoading(orderId, 'packing', true);
 
       const response = await axios.put(
         `${API_BASE_URL}/orders/update-to-packing`,
-        {
-          orderId: orderId,
-        },
-        {
-          withCredentials: true
-        }
+        { orderId: orderId },
+        { withCredentials: true }
       );
 
       if (response.data.success) {
         console.log(`Order ${orderId} status updated to Packing`);
+        
         // Update local state
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
@@ -325,25 +324,13 @@ export function OrderManagementSystem() {
               : order
           )
         );
-
-        alert(`Order ${orderId} has been moved to packing!`);
       } else {
         console.error(`Failed to update order to packing: ${response.data.message}`);
-        alert(`Failed to update order to packing: ${response.data.message}`);
       }
     } catch (error) {
       console.error("Error updating order to packing:", error);
-      if (error.response?.data?.message) {
-        alert(`Error: ${error.response.data.message}`);
-      } else {
-        alert("Error updating order to packing. Please try again.");
-      }
     } finally {
-      const button = document.querySelector(`#move-to-packing-button-${orderId}`);
-      if (button) {
-        button.disabled = false;
-        button.textContent = "Move to Packing";
-      }
+      setButtonLoading(orderId, 'packing', false);
     }
   }
 
@@ -367,158 +354,10 @@ export function OrderManagementSystem() {
     console.log(`Saving notes for order ${orderId}: ${internalNotes[orderId]}`)
   }
 
-  const printCustomerDetails = (order) => {
-    const printWindow = window.open("", "_blank")
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Customer Details - ${order.referenceCode}</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
-              .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
-              .section { margin-bottom: 25px; }
-              .label { font-weight: bold; color: #333; }
-              .items { border-collapse: collapse; width: 100%; margin-top: 10px; }
-              .items th, .items td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-              .items th { background-color: #f8f9fa; font-weight: bold; }
-              .priority-high { color: #dc3545; font-weight: bold; }
-              .priority-normal { color: #6c757d; }
-              .priority-low { color: #28a745; }
-              .cod-amount { background: #fff3cd; padding: 10px; border: 1px solid #ffeaa7; border-radius: 5px; margin: 10px 0; }
-              .instructions { background: #e7f3ff; padding: 10px; border-left: 4px solid #007bff; margin: 10px 0; }
-              .total-summary { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>🎁 Gift Commerce - Customer Details</h1>
-              <h2>Order: ${order.referenceCode}</h2>
-              <p>Order ID: ${order.orderId}</p>
-            </div>
-            
-            <div class="section">
-              <h3>📋 Order Information</h3>
-              <p><span class="label">Order Date:</span> ${new Date(order.orderDate).toLocaleString()}</p>
-              <p><span class="label">Status:</span> ${order.status.replace("_", " ").toUpperCase()}</p>
-              <p><span class="label">Priority:</span> <span class="priority-${order.priority}">${order.priority.toUpperCase()}</span></p>
-              <p><span class="label">Packing Status:</span> ${order.packingStatus.replace("_", " ").toUpperCase()}</p>
-              <p><span class="label">Order Source:</span> ${order.orderSource.replace("_", " ").toUpperCase()}</p>
-              <p><span class="label">Payment Method:</span> ${order.paymentMethod.replace("_", " ").toUpperCase()}</p>
-              ${order.assignedStaff ? `<p><span class="label">Assigned Staff:</span> ${order.assignedStaff}</p>` : ""}
-              ${order.trackingNumber ? `<p><span class="label">Tracking Number:</span> ${order.trackingNumber}</p>` : ""}
-            </div>
-            
-            <div class="section">
-              <h3>👤 Customer Information</h3>
-              <p><span class="label">Name:</span> ${order.customerName}</p>
-              <p><span class="label">Phone:</span> ${order.customerPhone}</p>
-              <p><span class="label">Email:</span> ${order.customerEmail}</p>
-              ${order.user?.address ? `<p><span class="label">Address:</span> ${order.user.address}</p>` : ""}
-              ${order.customerNotes ? `<p><span class="label">Customer Notes:</span> ${order.customerNotes}</p>` : ""}
-            </div>
-            
-            <div class="section">
-              <h3>📍 Delivery Information</h3>
-              <p><span class="label">Delivery Address:</span><br>${order.address}</p>
-              <p><span class="label">Billing Address:</span><br>${order.billingAddress}</p>
-              <p><span class="label">Estimated Time:</span> ${order.estimatedTime}</p>
-              <p><span class="label">Shipping Method:</span> ${order.shippingMethod.replace("_", " ").toUpperCase()}</p>
-              ${order.specialInstructions ? `<div class="instructions"><strong>⚠️ Special Instructions:</strong><br>${order.specialInstructions}</div>` : ""}
-            </div>
-            
-            <div class="section">
-              <h3>📦 Order Items (${order.items.length} items)</h3>
-              <table class="items">
-                <tr>
-                  <th>Item Name</th>
-                  <th>SKU</th>
-                  <th>Category</th>
-                  <th>Quantity</th>
-                  <th>Unit Price</th>
-                  <th>Total</th>
-                </tr>
-                ${order.items
-                  .map(
-                    (item) => `
-                  <tr>
-                    <td>${item.name}</td>
-                    <td>${item.sku}</td>
-                    <td>${item.category}</td>
-                    <td>${item.quantity}</td>
-                    <td>${item.price}</td>
-                    <td>${(item.price * item.quantity).toFixed(2)}</td>
-                  </tr>
-                `,
-                  )
-                  .join("")}
-              </table>
-            </div>
-            
-            <div class="section">
-              <h3>💰 Payment Summary</h3>
-              <div class="total-summary">
-                <p><span class="label">Subtotal:</span> $${order.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}</p>
-                <p><span class="label">Total Amount:</span> <strong>$${order.totalAmount}</strong></p>
-                ${order.codAmount > 0 ? `<div class="cod-amount"><strong>💵 COD Amount:</strong> $${order.codAmount}<br><em>Collect cash on delivery</em></div>` : "<p><span class='label'>Payment Status:</span> Paid Online ✅</p>"}
-              </div>
-            </div>
-            
-            ${
-              order.isGift
-                ? `
-              <div class="section">
-                <h3>🎁 Gift Details</h3>
-                <p><span class="label">Gift Order:</span> Yes ✅</p>
-                <p><span class="label">Gift Wrap:</span> ${order.giftWrap ? "Yes ✅" : "No ❌"}</p>
-                ${order.giftMessage ? `<div class="gift-message"><strong>💌 Gift Message:</strong><br>${order.giftMessage}</div>` : ""}
-              </div>
-            `
-                : `
-              <div class="section">
-                <h3>📦 Regular Order</h3>
-                <p>This is a regular order (not a gift)</p>
-              </div>
-            `
-            }
-            
-            ${
-              order.internalNotes
-                ? `
-            <div class="section">
-              <h3>📝 Internal Notes</h3>
-              <div class="instructions">${order.internalNotes}</div>
-            </div>
-            `
-                : ""
-            }
-            
-            <div class="section" style="margin-top: 40px; border-top: 1px solid #ddd; padding-top: 20px;">
-              <p><strong>📅 Printed on:</strong> ${new Date().toLocaleString()}</p>
-              <p><strong>🏢 Gift Commerce Admin System</strong></p>
-              <p><strong>📊 Total Items:</strong> ${order.items.reduce((sum, item) => sum + item.quantity, 0)} pieces</p>
-              <p><strong>⚖️ Total Weight:</strong> ${order.items.reduce((sum, item) => sum + Number.parseFloat(item.weight?.replace(' lbs', '') || '0'), 0).toFixed(1)} lbs</p>
-            </div>
-          </body>
-        </html>
-      `)
-      printWindow.document.close()
-      printWindow.print()
-    }
-  }
-
   const printAllOrdersSequentially = async (orders) => {
     if (!orders || orders.length === 0) {
-      alert("No orders available to print.");
       return;
     }
-
-    // Show confirmation with order count
-    const confirmed = window.confirm(
-      `Are you sure you want to print ${orders.length} orders? Each order will be printed separately.`
-    );
-    
-    if (!confirmed) return;
 
     // Print orders one by one with delays
     for (let i = 0; i < orders.length; i++) {
@@ -536,7 +375,6 @@ export function OrderManagementSystem() {
     
     // Show completion message
     setTimeout(() => {
-      alert(`Successfully initiated printing for ${orders.length} orders. Please check your printer queue.`);
     }, 2000);
   };
 
@@ -803,29 +641,15 @@ export function OrderManagementSystem() {
     }
   };
 
-  const updateButtonState = (buttonId, isProcessing, defaultText) => {
-    const button = document.querySelector(buttonId);
-    if (button) {
-      button.disabled = isProcessing;
-      button.textContent = isProcessing ? "Processing..." : defaultText;
-    }
-  };
-
   const confirmPacked = async (orderId) => {
-    const buttonId = `#confirm-packed-button-${orderId}`;
-    updateButtonState(buttonId, true, "Mark as Shipped");
-
     try {
       console.log("Marking order as shipped:", orderId);
+      setButtonLoading(orderId, 'shipped', true);
 
       const response = await axios.put(
         `${API_BASE_URL}/orders/update-to-shipped`,
-        {
-          orderId,
-        },
-        {
-          withCredentials: true
-        }
+        { orderId },
+        { withCredentials: true }
       );
 
       if (response.data.success) {
@@ -835,11 +659,8 @@ export function OrderManagementSystem() {
             order.id === orderId ? { ...order, status: "shipped" } : order
           )
         );
-
-        alert(`Order ${orderId} has been marked as shipped and is ready for delivery!`);
       } else {
         console.error(`Failed to update order status: ${response.data.message}`);
-        alert(`Failed to update order status: ${response.data.message}`);
       }
     } catch (error) {
       console.error("Error updating order status:", error);
@@ -849,25 +670,19 @@ export function OrderManagementSystem() {
         alert("Error updating order status. Please try again.");
       }
     } finally {
-      updateButtonState(buttonId, false, "Mark as Shipped");
+      setButtonLoading(orderId, 'shipped', false);
     }
   };
 
   const markAsDelivered = async (orderId) => {
-    const buttonId = `#mark-as-delivered-button-${orderId}`;
-    updateButtonState(buttonId, true, "Mark as Delivered");
-
     try {
       console.log("Marking order as delivered:", orderId);
+      setButtonLoading(orderId, 'delivered', true);
 
       const response = await axios.put(
         `${API_BASE_URL}/orders/update-to-delivered`,
-        {
-          orderId,
-        },
-        {
-          withCredentials: true
-        }
+        { orderId },
+        { withCredentials: true }
       );
 
       if (response.data.success) {
@@ -877,28 +692,19 @@ export function OrderManagementSystem() {
             order.id === orderId ? { ...order, status: "delivered" } : order
           )
         );
-
-        alert(`Order ${orderId} has been marked as delivered!`);
       } else {
         console.error(`Failed to update order status: ${response.data.message}`);
-        alert(`Failed to update order status: ${response.data.message}`);
       }
     } catch (error) {
       console.error("Error updating order status:", error);
-      if (error.response?.data?.message) {
-        alert(`Error: ${error.response.data.message}`);
-      } else {
-        alert("Error updating order status. Please try again.");
-      }
     } finally {
-      updateButtonState(buttonId, false, "Mark as Delivered");
+      setButtonLoading(orderId, 'delivered', false);
     }
   };
 
   // Updated Export CSV functionality to work only with filtered data on the 'All' tab
   const exportToCSV = () => {
     if (activeTab !== "all") {
-      alert("Export CSV is only available on the 'All' tab.");
       return;
     }
 
@@ -951,6 +757,397 @@ export function OrderManagementSystem() {
     } catch (error) {
       console.error("Error fetching all orders:", error);
     }
+  };
+
+  // New optimized print function for shipping labels (supports all order types)
+  const printAllVisibleOrdersAsShippingLabels = (ordersToPrint) => {
+    if (!ordersToPrint || ordersToPrint.length === 0) {
+      alert('No orders to print');
+      return;
+    }
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const getOrderTypeIcon = (orderType) => {
+      switch (orderType) {
+        case 'surprise': return '🎉 SURPRISE GIFT';
+        case 'collaborative': return '🤝 COLLABORATIVE GIFT';
+        default: return '📦 REGULAR ORDER';
+      }
+    };
+
+    const getOrderTypeColor = (orderType) => {
+      switch (orderType) {
+        case 'surprise': return '#ff6b6b';
+        case 'collaborative': return '#4ecdc4';
+        default: return '#6b46c1';
+      }
+    };
+
+    const ordersHtml = ordersToPrint.map((order, index) => `
+      <div class="shipping-label" ${index > 0 ? 'style="page-break-before: always;"' : ''}>
+        <div class="header">
+          <h1>🎁 GIFT COMMERCE</h1>
+          <h2>SHIPPING LABEL</h2>
+          <div class="order-type" style="background-color: ${getOrderTypeColor(order.orderType)};">
+            ${getOrderTypeIcon(order.orderType)}
+          </div>
+          <p>Order #${order.referenceCode || order._id}</p>
+        </div>
+
+        <div class="shipping-info">
+          <div class="from-address">
+            <h3>📦 FROM:</h3>
+            <div class="address-box">
+              <strong>Gift Commerce</strong><br>
+              123 Business Street<br>
+              City, State 12345<br>
+              Phone: (555) 123-4567
+            </div>
+          </div>
+
+          <div class="to-address">
+            <h3>📍 TO:</h3>
+            <div class="address-box">
+              <strong>${order.recipientName || order.customerName || `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim()}</strong><br>
+              ${order.recipientPhone || order.customerPhone || order.user?.phone || 'N/A'}<br>
+              ${order.shippingAddress || order.address || 'Address not provided'}
+            </div>
+          </div>
+        </div>
+
+        <div class="order-details">
+          <div class="order-info">
+            <div class="info-row">
+              <span class="label">Order ID:</span>
+              <span class="value">${order._id || order.id}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Order Type:</span>
+              <span class="value">${getOrderTypeIcon(order.orderType)}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Order Date:</span>
+              <span class="value">${new Date(order.createdAt || order.orderDate).toLocaleDateString()}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Status:</span>
+              <span class="value status-badge">${(order.status || 'processing').toUpperCase()}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Total Amount:</span>
+              <span class="value total-amount">$${(order.total || order.totalAmount || 0).toFixed(2)}</span>
+            </div>
+            ${order.orderType === 'collaborative' ? `
+              <div class="info-row">
+                <span class="label">Participants:</span>
+                <span class="value">${order.participants?.length || 0} people</span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+
+        <div class="items-section">
+          <h3>📋 ITEMS (${order.items?.length || 0} products)</h3>
+          <div class="items-list">
+            ${(order.items || []).map(item => `
+              <div class="item-row">
+                <div class="item-name">${item.name || item.productName || 'Unknown Product'}</div>
+                <div class="item-details">
+                  <span>Qty: ${item.quantity || 1}</span>
+                  <span>Price: $${(item.price || item.productPrice || 0).toFixed(2)}</span>
+                  <span>Total: $${((item.price || item.productPrice || 0) * (item.quantity || 1)).toFixed(2)}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="notes-section">
+          ${order.notes ? `<div class="notes"><strong>Notes:</strong> ${order.notes}</div>` : ''}
+          ${order.orderType === 'surprise' ? '<div class="gift-indicator surprise-gift">🎉 SURPRISE GIFT ORDER</div>' : ''}
+          ${order.orderType === 'collaborative' ? '<div class="gift-indicator collaborative-gift">🤝 COLLABORATIVE GIFT ORDER</div>' : ''}
+          ${order.orderType === 'regular' && order.isGift ? '<div class="gift-indicator">🎁 GIFT ORDER</div>' : ''}
+        </div>
+
+        <div class="barcode-section">
+          <div class="barcode-placeholder">|||| |||| |||| ||||</div>
+          <p>Tracking: ${order.trackingNumber || 'TRK' + (order._id || order.id).slice(-8).toUpperCase()}</p>
+        </div>
+
+        <div class="print-info">
+          <p>Printed on: ${new Date().toLocaleString()}</p>
+        </div>
+      </div>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Shipping Labels - ${ordersToPrint.length} Orders</title>
+          <style>
+            @page { 
+              margin: 0.3in; 
+              size: A4; 
+            }
+            
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0; 
+              padding: 0; 
+              background: white;
+              color: #000;
+            }
+            
+            .shipping-label {
+              width: 100%;
+              min-height: 11in;
+              padding: 20px;
+              margin-bottom: 20px;
+              border: 2px solid #000;
+              box-sizing: border-box;
+            }
+            
+            .header {
+              text-align: center;
+              border-bottom: 2px solid #000;
+              padding-bottom: 15px;
+              margin-bottom: 20px;
+              position: relative;
+            }
+            
+            .header h1 {
+              font-size: 24px;
+              margin: 0 0 5px 0;
+              font-weight: bold;
+            }
+            
+            .header h2 {
+              font-size: 18px;
+              margin: 0 0 10px 0;
+              color: #666;
+            }
+            
+            .order-type {
+              display: inline-block;
+              color: white;
+              padding: 6px 12px;
+              border-radius: 15px;
+              font-size: 12px;
+              font-weight: bold;
+              margin: 5px 0;
+            }
+            
+            .header p {
+              font-size: 14px;
+              margin: 0;
+              font-weight: bold;
+            }
+            
+            .shipping-info {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 25px;
+            }
+            
+            .from-address, .to-address {
+              width: 48%;
+            }
+            
+            .from-address h3, .to-address h3 {
+              font-size: 14px;
+              margin: 0 0 8px 0;
+              color: #333;
+              border-bottom: 1px solid #ccc;
+              padding-bottom: 3px;
+            }
+            
+            .address-box {
+              border: 1px solid #000;
+              padding: 12px;
+              min-height: 80px;
+              background: #f9f9f9;
+              font-size: 13px;
+              line-height: 1.4;
+            }
+            
+            .order-details {
+              margin-bottom: 20px;
+              border: 1px solid #ddd;
+              border-radius: 5px;
+              padding: 15px;
+              background: #f8f9fa;
+            }
+            
+            .info-row {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 8px;
+              padding: 5px 0;
+              border-bottom: 1px dotted #ccc;
+            }
+            
+            .info-row:last-child {
+              border-bottom: none;
+              margin-bottom: 0;
+            }
+            
+            .label {
+              font-weight: bold;
+              color: #333;
+            }
+            
+            .value {
+              color: #000;
+            }
+            
+            .status-badge {
+              background: #e3f2fd;
+              color: #1976d2;
+              padding: 2px 8px;
+              border-radius: 12px;
+              font-size: 11px;
+              font-weight: bold;
+            }
+            
+            .total-amount {
+              font-weight: bold;
+              font-size: 16px;
+              color: #d32f2f;
+            }
+            
+            .items-section {
+              margin-bottom: 20px;
+            }
+            
+            .items-section h3 {
+              font-size: 16px;
+              margin: 0 0 10px 0;
+              color: #333;
+              border-bottom: 2px solid #333;
+              padding-bottom: 5px;
+            }
+            
+            .items-list {
+              border: 1px solid #ddd;
+              border-radius: 5px;
+              overflow: hidden;
+            }
+            
+            .item-row {
+              padding: 10px 12px;
+              border-bottom: 1px solid #eee;
+              background: white;
+            }
+            
+            .item-row:last-child {
+              border-bottom: none;
+            }
+            
+            .item-row:nth-child(even) {
+              background: #f8f9fa;
+            }
+            
+            .item-name {
+              font-weight: bold;
+              margin-bottom: 5px;
+              color: #333;
+            }
+            
+            .item-details {
+              display: flex;
+              justify-content: space-between;
+              font-size: 12px;
+              color: #666;
+            }
+            
+            .notes-section {
+              margin-bottom: 20px;
+            }
+            
+            .notes {
+              background: #fff3cd;
+              border: 1px solid #ffeaa7;
+              padding: 10px;
+              border-radius: 5px;
+              margin-bottom: 10px;
+              font-size: 13px;
+            }
+            
+            .gift-indicator {
+              padding: 8px;
+              border-radius: 5px;
+              text-align: center;
+              font-weight: bold;
+              font-size: 14px;
+              margin-bottom: 10px;
+            }
+            
+            .gift-indicator {
+              background: #d1ecf1;
+              border: 1px solid #bee5eb;
+              color: #0c5460;
+            }
+            
+            .surprise-gift {
+              background: #ffe6e6;
+              border: 1px solid #ffcccc;
+              color: #cc0000;
+            }
+            
+            .collaborative-gift {
+              background: #e6f7f7;
+              border: 1px solid #cceeee;
+              color: #006666;
+            }
+            
+            .barcode-section {
+              text-align: center;
+              margin-bottom: 15px;
+              padding: 15px;
+              border: 1px solid #000;
+              background: white;
+            }
+            
+            .barcode-placeholder {
+              font-family: 'Courier New', monospace;
+              font-size: 24px;
+              font-weight: bold;
+              letter-spacing: 3px;
+              margin-bottom: 8px;
+            }
+            
+            .print-info {
+              text-align: center;
+              font-size: 11px;
+              color: #666;
+              border-top: 1px solid #ccc;
+              padding-top: 8px;
+            }
+            
+            @media print {
+              body { -webkit-print-color-adjust: exact; }
+              .shipping-label { 
+                page-break-after: always; 
+                page-break-inside: avoid; 
+              }
+              .shipping-label:last-child { 
+                page-break-after: avoid; 
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${ordersHtml}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
   };
 
   useEffect(() => {
@@ -1037,7 +1234,77 @@ export function OrderManagementSystem() {
     }
 
     fetchAllOrders()
+    fetchSurpriseGifts()
+    fetchCollaborativeGifts()
   }, [])
+
+  // Fetch surprise gifts
+  const fetchSurpriseGifts = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/surprise/all`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          console.log('Surprise gifts fetched:', data.data.length)
+          setSurpriseGifts(data.data)
+        } else {
+          console.error('Failed to fetch surprise gifts:', data.message)
+        }
+      } else {
+        console.error('Failed to fetch surprise gifts, status:', response.status)
+      }
+    } catch (error) {
+      console.error('Error fetching surprise gifts:', error)
+    }
+  }
+
+  // Fetch collaborative gifts
+  const fetchCollaborativeGifts = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/collaborative-purchases/all`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          console.log('Collaborative gifts fetched:', data.data.length)
+          setCollaborativeGifts(data.data)
+        } else {
+          console.error('Failed to fetch collaborative gifts:', data.message)
+        }
+      } else {
+        console.error('Failed to fetch collaborative gifts, status:', response.status)
+      }
+    } catch (error) {
+      console.error('Error fetching collaborative gifts:', error)
+    }
+  }
+
+  // Set default 2-week filter for "All Orders" tab
+  useEffect(() => {
+    if (activeTab === "all" && !fromDate && !toDate) {
+      const today = new Date();
+      const twoWeeksAgo = new Date(today.getTime() - (14 * 24 * 60 * 60 * 1000));
+      
+      // Format dates for input[type="date"]
+      const formatDate = (date) => date.toISOString().split('T')[0];
+      
+      setFromDate(formatDate(twoWeeksAgo));
+      setToDate(formatDate(today));
+    }
+  }, [activeTab, fromDate, toDate]);
 
   const printAllPackedOrders = () => {
     const packedOrders = orders.filter((order) => order.status === "packing");
@@ -1093,8 +1360,6 @@ export function OrderManagementSystem() {
       orders.forEach((order) => {
         printOrderDetails(order);
       });
-    } else {
-      alert("No orders available to print.");
     }
   };
 
@@ -1106,7 +1371,7 @@ export function OrderManagementSystem() {
       </header>
 
       <div className="p-6 space-y-6">
-        <DashboardStats orders={orders} />
+        <DashboardStats orders={allOrders} />
 
         {/* Enhanced Order Management */}
         <Card>
@@ -1114,17 +1379,14 @@ export function OrderManagementSystem() {
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
               <CardTitle className="text-xl">Advanced Order Management System</CardTitle>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={testProductsEndpoint}>
-                  Test Products API
-                </Button>
-                {activeTab === "packed" && (
-                  <Button variant="outline" size="sm" onClick={printAllPackedOrders}>
+                {(activeTab === "packed" || activeTab === "processing" || activeTab === "accepted") && (
+                  <Button variant="outline" size="sm" onClick={() => printAllVisibleOrdersAsShippingLabels(filteredOrders)}>
                     <Printer className="h-4 w-4 mr-2" />
-                    Print All Packed
+                    Print All ({filteredOrders.length})
                   </Button>
                 )}
                 {activeTab === "all" && (
-                  <Button variant="outline" size="sm" onClick={() => printAllOrdersSequentially(filteredOrders)}>
+                  <Button variant="outline" size="sm" onClick={() => printAllVisibleOrdersAsShippingLabels(filteredOrders)}>
                     <Printer className="h-4 w-4 mr-2" />
                     Print All Filtered ({filteredOrders.length})
                   </Button>
@@ -1198,12 +1460,22 @@ export function OrderManagementSystem() {
                                 <div className="font-medium text-blue-600">{order.referenceCode}</div>
                                 <div className="text-sm text-muted-foreground">{order.orderId}</div>
                                 <div className="flex gap-1">
-                                  <Badge variant="outline" className={priorityColors[order.priority]}>
-                                    {order.priority}
+                                  <Badge variant="outline" className={priorityColors[order.priority || 'normal']}>
+                                    {order.priority || 'normal'}
                                   </Badge>
                                   <Badge variant="outline" className="text-xs">
-                                    {order.orderSource}
+                                    {order.orderSource || 'online'}
                                   </Badge>
+                                  {order.orderType === 'surprise' && (
+                                    <Badge variant="outline" className="text-xs bg-red-50 text-red-600 border-red-200">
+                                      🎉 Surprise
+                                    </Badge>
+                                  )}
+                                  {order.orderType === 'collaborative' && (
+                                    <Badge variant="outline" className="text-xs bg-teal-50 text-teal-600 border-teal-200">
+                                      🤝 Collaborative
+                                    </Badge>
+                                  )}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
                                   {new Date(order.orderDate).toLocaleDateString()}
@@ -1298,7 +1570,7 @@ export function OrderManagementSystem() {
                                   order={order}
                                   onRejectOrder={null} // Disable reject functionality
                                   onPackingComplete={null} // Disable packing complete functionality
-                                  onPrintCustomerDetails={printCustomerDetails} // Keep print functionality
+                                  onPrintShippingLabel={printAllVisibleOrdersAsShippingLabels} // Use new shipping label function
                                 >
                                   <DialogTrigger asChild>
                                     <Button
@@ -1320,7 +1592,7 @@ export function OrderManagementSystem() {
                                     onClose={() => setSelectedOrder(null)}
                                     onRejectOrder={null} // Disable reject functionality
                                     onPackingComplete={null} // Disable packing complete functionality
-                                    onPrintCustomerDetails={printCustomerDetails} // Keep print functionality
+                                    onPrintShippingLabel={printAllVisibleOrdersAsShippingLabels} // Use new shipping label function
                                     onUpdateQuantity={null} // Disable update quantity functionality
                                     onRemoveItem={null} // Disable remove item functionality
                                     onSaveInternalNotes={null} // Disable save internal notes functionality
@@ -1335,24 +1607,38 @@ export function OrderManagementSystem() {
                                 <Button
                                   size="sm"
                                   variant="default"
-                                  onClick={() => confirmAction("Accept this order and start processing?", () => acceptOrder(order.id))}
                                   className="ml-2 bg-green-600 hover:bg-green-700"
-                                  id={`accept-order-button-${order.id}`}
+                                  disabled={loadingStates[`${order.id}-accept`]}
+                                  onClick={() => acceptOrder(order.id)}
                                 >
-                                  Accept Order
+                                  {loadingStates[`${order.id}-accept`] ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Processing...
+                                    </>
+                                  ) : (
+                                    "Accept Order"
+                                  )}
                                 </Button>
                               )}
 
-                              {/* Show Move to Packing button for processing orders */}
+                              {/* Show Start Packing button for processing orders */}
                               {order.status === "processing" && (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => confirmAction("Move this order to packing?", () => updateOrderToPacking(order.id))}
                                   className="ml-2 border-blue-600 text-blue-600 hover:bg-blue-50"
-                                  id={`move-to-packing-button-${order.id}`}
+                                  disabled={loadingStates[`${order.id}-packing`]}
+                                  onClick={() => updateOrderToPacking(order.id)}
                                 >
-                                  Start Packing
+                                  {loadingStates[`${order.id}-packing`] ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Processing...
+                                    </>
+                                  ) : (
+                                    "Start Packing"
+                                  )}
                                 </Button>
                               )}
 
@@ -1361,11 +1647,18 @@ export function OrderManagementSystem() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => confirmAction("Mark this order as shipped?", () => confirmPacked(order.id))}
                                   className="ml-2 border-orange-600 text-orange-600 hover:bg-orange-50"
-                                  id={`confirm-packed-button-${order.id}`}
+                                  disabled={loadingStates[`${order.id}-shipped`]}
+                                  onClick={() => confirmPacked(order.id)}
                                 >
-                                  Mark as Shipped
+                                  {loadingStates[`${order.id}-shipped`] ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Processing...
+                                    </>
+                                  ) : (
+                                    "Mark as Shipped"
+                                  )}
                                 </Button>
                               )}
 
@@ -1374,11 +1667,18 @@ export function OrderManagementSystem() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => confirmAction("Mark this order as delivered?", () => markAsDelivered(order.id))}
                                   className="ml-2 border-purple-600 text-purple-600 hover:bg-purple-50"
-                                  id={`mark-as-delivered-button-${order.id}`}
+                                  disabled={loadingStates[`${order.id}-delivered`]}
+                                  onClick={() => markAsDelivered(order.id)}
                                 >
-                                  Mark as Delivered
+                                  {loadingStates[`${order.id}-delivered`] ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Processing...
+                                    </>
+                                  ) : (
+                                    "Mark as Delivered"
+                                  )}
                                 </Button>
                               )}
 
