@@ -1,4 +1,5 @@
 "use client";
+import { useState } from 'react';
 import { SidebarInset, SidebarTrigger } from "../../../components/ui/sidebar";
 import { Separator } from "../../../components/ui/separator";
 import { useSelector } from 'react-redux';
@@ -16,9 +17,130 @@ import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs";
 import { User, Lock } from "lucide-react";
+import { toast, Toaster } from 'sonner';
 
 export default function SettingsPage() {
   const { user } = useSelector((state) => state.userState);
+  
+  // Profile state
+  const [profileData, setProfileData] = useState({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    phone: user?.phone || ''
+  });
+  
+  // Password state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const handleProfileChange = (field, value) => {
+    setProfileData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handlePasswordChange = (field, value) => {
+    setPasswordData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      setIsUpdatingProfile(true);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/updateprofile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          firstName: profileData.firstName,
+          lastName: profileData.lastName,
+          phone: profileData.phone,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Profile updated successfully');
+      } else {
+        toast.error(data.message || 'Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    // Validation
+    if (!passwordData.currentPassword) {
+      toast.error('Please enter your current password');
+      return;
+    }
+    
+    if (!passwordData.newPassword) {
+      toast.error('Please enter a new password');
+      return;
+    }
+    
+    if (passwordData.newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters long');
+      return;
+    }
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('New password and confirmation do not match');
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/changepassword`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          oldPassword: passwordData.currentPassword,
+          password: passwordData.newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Password updated successfully');
+        // Clear the form
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      } else {
+        toast.error(data.message || 'Failed to update password');
+      }
+    } catch (error) {
+      console.error('Error updating password:', error);
+      toast.error('Failed to update password');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
 
   return (
     <SidebarInset>
@@ -65,22 +187,44 @@ export default function SettingsPage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="firstName">First Name</Label>
-                      <Input id="firstName" defaultValue={user?.firstName || ""} />
+                      <Input 
+                        id="firstName" 
+                        value={profileData.firstName}
+                        onChange={(e) => handleProfileChange('firstName', e.target.value)}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="lastName">Last Name</Label>
-                      <Input id="lastName" defaultValue={user?.lastName || ""} />
+                      <Input 
+                        id="lastName" 
+                        value={profileData.lastName}
+                        onChange={(e) => handleProfileChange('lastName', e.target.value)}
+                      />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" defaultValue={user?.email || ""} />
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      value={profileData.email}
+                      disabled
+                      className="bg-gray-50"
+                    />
+                    <p className="text-xs text-gray-500">Email cannot be changed</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone</Label>
-                    <Input id="phone" type="text" defaultValue={user?.phone || ""} />
+                    <Input 
+                      id="phone" 
+                      type="text" 
+                      value={profileData.phone}
+                      onChange={(e) => handleProfileChange('phone', e.target.value)}
+                    />
                   </div>
-                  <Button>Save Changes</Button>
+                  <Button onClick={handleSaveProfile} disabled={isUpdatingProfile}>
+                    {isUpdatingProfile ? 'Saving...' : 'Save Changes'}
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -97,23 +241,44 @@ export default function SettingsPage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="currentPassword">Current Password</Label>
-                    <Input id="currentPassword" type="password" />
+                    <Input 
+                      id="currentPassword" 
+                      type="password" 
+                      value={passwordData.currentPassword}
+                      onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
+                      placeholder="Enter your current password"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="newPassword">New Password</Label>
-                    <Input id="newPassword" type="password" />
+                    <Input 
+                      id="newPassword" 
+                      type="password" 
+                      value={passwordData.newPassword}
+                      onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+                      placeholder="Enter your new password"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                    <Input id="confirmPassword" type="password" />
+                    <Input 
+                      id="confirmPassword" 
+                      type="password" 
+                      value={passwordData.confirmPassword}
+                      onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
+                      placeholder="Confirm your new password"
+                    />
                   </div>
-                  <Button>Update Password</Button>
+                  <Button onClick={handleUpdatePassword} disabled={isChangingPassword}>
+                    {isChangingPassword ? 'Updating...' : 'Update Password'}
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>
           </Tabs>
         </div>
       </div>
+      <Toaster position="top-center" richColors closeButton />
     </SidebarInset>
   );
 }
