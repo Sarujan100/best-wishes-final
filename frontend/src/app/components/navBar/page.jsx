@@ -180,7 +180,7 @@ function Navbar() {
                 <li onClick={() => handleNavigation('/services')} className="cursor-pointer hover:text-[#822BE2] transition-colors">Services</li>
 
                 {/* Gift Combo */}
-                {/* <li className="relative cursor-pointer" onClick={() => setGiftDropdownOpen(!giftDropdownOpen)}>
+                <li className="relative cursor-pointer" onClick={() => setGiftDropdownOpen(!giftDropdownOpen)}>
                   <div className="flex items-center hover:text-[#822BE2] transition-colors">
                     Gift Combo
                     <svg className={`ml-1 w-4 h-4 transition-transform ${giftDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -190,12 +190,12 @@ function Navbar() {
 
                   {giftDropdownOpen && (
                     <ul className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-md shadow-lg w-56 text-sm z-50">
-                      <li className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => handleNavigation('/surprisegift')}>Surprise Gift Delivery</li>
-                      <li className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"  onClick={() => handleNavigation('/allProducts/showcase')} >Customizable Gift</li>
+                      {/* <li className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => handleNavigation('/surprisegift')}>Surprise Gift Delivery</li>
+                      <li className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"  onClick={() => handleNavigation('/allProducts/showcase')} >Customizable Gift</li> */}
                       <li className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors" onClick={openModal}>Reminder Gift</li>
                     </ul>
                   )}
-                </li> */}
+                </li>
 
                 <li onClick={() => handleNavigation('/aboutUs')} className="cursor-pointer hover:text-[#822BE2] transition-colors">About Us</li>
                 <li className="cursor-pointer hover:text-[#822BE2] transition-colors" onClick={() => handleNavigation('/user/checkout')}>
