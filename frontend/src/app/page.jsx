@@ -847,7 +847,7 @@ export default function FancyCarousel() {
           <FaUserCircle className='text-[35px] text-[#822BE2]' />
         </button>
         <button
-          onClick={() => router.push('/allProducts')}
+          onClick={() => router.push('/allProducts/showcase')}
           aria-label='Go to shopping'
           className='flex items-center gap-2 px-4 py-3 rounded-full shadow-2xl bg-[#822BE2] hover:bg-purple-700 text-white hover:cursor-pointer'
         >
