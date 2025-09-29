@@ -1,0 +1,69 @@
+graph TD
+    subgraph "Data Models"
+        User[User<br/>- firstName, lastName<br/>- email, password<br/>- role, phone<br/>- isBlocked]
+        Product[Product<br/>- name, sku<br/>- price, stock<br/>- isCustomizable<br/>- category]
+        Order[Order<br/>- items, total<br/>- status, deliveryStaff<br/>- trackingNumber]
+        Category[Category<br/>- name, key<br/>- attributes<br/>- sortOrder]
+        Customization[Customization<br/>- customizationType<br/>- selectedQuote<br/>- previewImage]
+        CollaborativePurchase[CollaborativePurchase<br/>- participants<br/>- shareAmount<br/>- deadline]
+        Event[Event<br/>- name, date<br/>- description<br/>- isActive]
+        Notification[Notification<br/>- title, message<br/>- type, isRead<br/>- priority]
+        Feedback[Feedback<br/>- rating, comment<br/>- likes, dislikes<br/>- isVerified]
+        EventReminder[EventReminder<br/>- remindermsg<br/>- date, occasion<br/>- sent]
+        SurpriseGift[SurpriseGift<br/>- recipientName<br/>- costume<br/>- deliveryStaff]
+    end
+
+    subgraph "Controllers"
+        AuthController[AuthController<br/>- register, login<br/>- forgotPassword<br/>- updateProfile]
+        ProductController[ProductController<br/>- CRUD operations<br/>- search, filter<br/>- inventory management]
+        OrderController[OrderController<br/>- create, track<br/>- status updates<br/>- delivery assignment]
+        CustomizationController[CustomizationController<br/>- create preview<br/>- manage quotes<br/>- upload images]
+        NotificationController[NotificationController<br/>- create, read<br/>- mark as read<br/>- bulk operations]
+    end
+
+    subgraph "Middleware"
+        AuthMiddleware[AuthMiddleware<br/>- isAuthenticated<br/>- authorizeRoles]
+        ValidationMiddleware[ValidationMiddleware<br/>- input validation<br/>- data sanitization]
+        UploadMiddleware[UploadMiddleware<br/>- file upload<br/>- image processing]
+    end
+
+    subgraph "Services"
+        EmailService[EmailService<br/>- send notifications<br/>- OTP delivery]
+        CloudinaryService[CloudinaryService<br/>- image upload<br/>- media management]
+    end
+
+    %% Relationships
+    User -->|1:M| Order
+    User -->|1:M| EventReminder
+    User -->|1:M| Notification
+    User -->|1:M| Feedback
+    User -->|1:M| CollaborativePurchase
+    User -->|1:M| Customization
+
+    Product -->|1:M| Order
+    Product -->|1:M| Feedback
+    Product -->|1:M| Customization
+    Product -->|M:1| Category
+
+    Order -->|1:M| Customization
+    Order -->|1:M| Feedback
+
+    CollaborativePurchase -->|M:1| Product
+    CollaborativePurchase -->|1:1| Order
+
+    EventReminder -->|M:1| Event
+
+    %% Controller Dependencies
+    AuthController -.->|manages| User
+    ProductController -.->|manages| Product
+    OrderController -.->|manages| Order
+    CustomizationController -.->|manages| Customization
+    NotificationController -.->|manages| Notification
+
+    %% Middleware Usage
+    AuthMiddleware -.->|authenticates| User
+    UploadMiddleware -.->|uses| CloudinaryService
+
+    %% Service Usage
+    AuthController -.->|uses| EmailService
+    NotificationController -.->|uses| EmailService

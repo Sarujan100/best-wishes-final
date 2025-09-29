@@ -1,7 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const collaborativePurchaseController = require('../controllers/collaborativePurchaseController');
-const { isAuthenticated } = require('../middleware/authMiddleware');
+const { isAuthenticated, authorizeRoles } = require('../middleware/authMiddleware');
+
+// Admin routes - Get all collaborative purchases
+router.get('/all', isAuthenticated, authorizeRoles('admin', 'inventoryManager'), collaborativePurchaseController.getAllCollaborativePurchases);
+
+// Admin routes - Print individual collaborative purchase details
+router.get('/:id/print', isAuthenticated, authorizeRoles('admin', 'inventoryManager'), collaborativePurchaseController.printCollaborativePurchaseDetails);
+
+// Admin routes - Print all delivered collaborative purchases
+router.get('/print-all-delivered', isAuthenticated, authorizeRoles('admin', 'inventoryManager'), collaborativePurchaseController.printAllDeliveredCollaborativePurchases);
+
+// Admin routes - Start packing process
+router.post('/:id/start-packing', isAuthenticated, authorizeRoles('admin', 'inventoryManager'), collaborativePurchaseController.startPacking);
+
+// Admin routes - Update status
+router.put('/:id/status', isAuthenticated, authorizeRoles('admin', 'inventoryManager'), collaborativePurchaseController.updateCollaborativeStatus);
+
+// Delivery staff routes
+router.get('/delivery', isAuthenticated, authorizeRoles('deliveryStaff'), collaborativePurchaseController.getDeliveryCollaborativePurchases);
+router.get('/delivery-stats', isAuthenticated, authorizeRoles('deliveryStaff'), collaborativePurchaseController.getDeliveryStats);
+router.put('/delivery/:id/status', isAuthenticated, authorizeRoles('deliveryStaff'), collaborativePurchaseController.updateDeliveryStatus);
 
 // Create collaborative purchase
 router.post('/', isAuthenticated, collaborativePurchaseController.createCollaborativePurchase);

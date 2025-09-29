@@ -21,6 +21,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Footer from "../../components/footer/page"
 import ProductDetails from "../../components/ProductDetails"
+import ProductReviews from "../../components/ProductReviews/page"
 import ImageMagnifier from "../../components/ImageMagnifier"
 import { useRouter } from 'next/navigation';
 
@@ -295,6 +296,17 @@ function ProductDetailPage() {
               <button onClick={handleAddToCart} className='flex justify-center items-center border text-[#822BE2] rounded-[8px] w-full h-[50px] gap-2 font-bold'>
                 Add to cart <LuShoppingCart />
               </button>
+              
+              {/* Customize Button for Customizable Products */}
+              {product.isCustomizable && (
+                <button
+                  className="flex justify-center items-center border text-white bg-[#FFA500] rounded-[8px] w-full h-[50px] gap-2 font-bold cursor-pointer hover:bg-[#FF8C00]"
+                  onClick={() => router.push(`/customize/${product._id}`)}
+                >
+                  <span>🎨</span> Customize This {product.customizationType || 'Product'}
+                </button>
+              )}
+
               <button
                 className="flex justify-center items-center border text-white bg-[#822BE2] rounded-[8px] w-full h-[50px] gap-2 font-bold cursor-pointer hover:opacity-90"
                 onClick={() => router.push(`/payment?productId=${product._id}&qty=${quantity}`)}
@@ -341,6 +353,7 @@ function ProductDetailPage() {
         </div>
         <div className='flex-col items-start mt-[40px] w-full'>
           <ProductDetails product={product} />
+          <ProductReviews productId={product._id} />
         </div>
 
         {/* all Products */}
@@ -388,7 +401,7 @@ function ProductDetailPage() {
                 <div className="mt-2 px-1">
                   <h3 className="font-medium truncate">{product.name}</h3>
                   <p className="font-medium text-gray-700">
-                    US ${product.price || product.retailPrice}
+                    UK £{product.price || product.retailPrice}
                   </p>
                   <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
                     {Array.from({ length: 5 }, (_, i) => {

@@ -1,0 +1,490 @@
+@startuml BestWishesProjectClassDiagram
+!theme blueprint
+title Best Wishes E-commerce Platform - Class Diagram
+
+package "Models (Data Layer)" {
+
+    class User {
+        +ObjectId _id
+        +String firstName
+        +String lastName
+        +String email
+        +String password (hidden)
+        +String phone
+        +String address
+        +String role (user|admin|inventoryManager|deliveryStaff)
+        +Boolean twoFactorEnabled
+        +Boolean isBlocked
+        +String profileImage
+        +String resetPasswordToken (hidden)
+        +Date resetPasswordExpires (hidden)
+        +Date lastLogin
+        +Date lastActiveAt
+        +Date createdAt
+        +Date updatedAt
+        --
+        +matchPassword(enteredPassword): Boolean
+        +getResetPasswordToken(): String
+        +validateResetToken(token): Boolean
+    }
+
+    class Product {
+        +ObjectId _id
+        +String name
+        +String sku (unique)
+        +String shortDescription
+        +String detailedDescription
+        +String mainCategory
+        +Object filters
+        +String[] tags
+        +Image[] images
+        +Video[] videos
+        +Number costPrice
+        +Number retailPrice
+        +Number salePrice
+        +String taxClass
+        +Number stock
+        +String stockStatus
+        +Number weight
+        +Dimensions dimensions
+        +String shippingClass
+        +Variant[] variants
+        +String status (draft|active|archived)
+        +Boolean featured
+        +String seoTitle
+        +String seoDescription
+        +Number rating
+        +Boolean isCustomizable
+        +String customizationType
+        +Number customizationPrice
+        +ObjectId createdBy
+        +ObjectId updatedBy
+        +Date createdAt
+        +Date updatedAt
+        --
+        +virtual price(): Number
+        +virtual profitMargin(): Number
+    }
+
+    class Order {
+        +ObjectId _id
+        +ObjectId user
+        +OrderItem[] items
+        +Number subtotal
+        +Number shippingCost
+        +Number total
+        +String status (Pending|Processing|Packing|Shipped|Delivered|Cancelled)
+        +Date orderedAt
+        +ObjectId updatedBy
+        +StatusHistory[] statusHistory
+        +String deliveryNotes
+        +String trackingNumber
+        +ObjectId deliveryStaffId
+        +Date deliveredAt
+        +Date createdAt
+        +Date updatedAt
+    }
+
+    class OrderItem {
+        +ObjectId product
+        +String name
+        +Number price
+        +Number quantity
+        +String image
+        +Customization customization
+    }
+
+    class StatusHistory {
+        +String status
+        +ObjectId updatedBy
+        +Date updatedAt
+        +String notes
+    }
+
+    class Customization {
+        +ObjectId _id
+        +ObjectId product
+        +ObjectId user
+        +ObjectId order
+        +String customizationType (mug|birthday-card|anniversary-card|general-card)
+        +Quote selectedQuote
+        +String customMessage
+        +String fontStyle
+        +Number fontSize
+        +String fontColor
+        +Position textPosition
+        +String backgroundColor
+        +AdditionalImage[] additionalImages
+        +String previewImage
+        +Number price
+        +String status (draft|confirmed|in-production|completed|cancelled)
+        +String specialInstructions
+        +Date createdAt
+        +Date updatedAt
+        --
+        +virtual finalText(): String
+    }
+
+    class Category {
+        +ObjectId _id
+        +String key (unique, lowercase)
+        +String name
+        +String description
+        +Attribute[] attributes
+        +String icon
+        +String image
+        +Boolean isActive
+        +Number sortOrder
+        +ObjectId createdBy
+        +ObjectId updatedBy
+        +Date createdAt
+        +Date updatedAt
+        --
+        +virtual productCount(): Number
+    }
+
+    class Event {
+        +ObjectId _id
+        +String name
+        +String description
+        +Date date
+        +String image
+        +Boolean isActive
+        +Boolean featured
+        +Date createdAt
+        +Date updatedAt
+    }
+
+    class CollaborativePurchase {
+        +ObjectId _id
+        +ObjectId product (legacy)
+        +String productName (legacy)
+        +Number productPrice (legacy)
+        +Number quantity
+        +ProductItem[] products (multi-product)
+        +Boolean isMultiProduct
+        +Number totalAmount
+        +Number shareAmount
+        +ObjectId createdBy
+        +Participant[] participants
+        +String status (pending|completed|cancelled|expired|refunded|packing|outfordelivery|delivered)
+        +Date createdAt
+        +Date deadline
+        +Date completedAt
+        +Date cancelledAt
+        +ObjectId orderId
+        +ObjectId deliveryStaffId
+        +ObjectId[] notifications
+    }
+
+    class GiftContribution {
+        +ObjectId _id
+        +ObjectId product
+        +String productName
+        +Number productPrice
+        +Number share
+        +ObjectId createdBy
+        +Participant[] participants
+        +String status (pending|completed|cancelled|expired)
+        +Date createdAt
+        +Date deadline
+        +ObjectId[] notifications
+    }
+
+    class SurpriseGift {
+        +ObjectId _id
+        +ObjectId user
+        +String recipientName
+        +String recipientPhone
+        +String shippingAddress
+        +String costume (none|mickey|tomjerry|joker)
+        +String suggestions
+        +SurpriseGiftItem[] items
+        +Number total
+        +String status (Pending|Confirmed|AwaitingPayment|Paid|Packing|OutForDelivery|Delivered|Cancelled)
+        +String paymentStatus (pending|paid|failed)
+        +String paymentId
+        +Date scheduledAt
+        +Date packedAt
+        +ObjectId deliveryStaffId
+        +Date deliveredAt
+        +Date createdAt
+        +Date updatedAt
+    }
+
+    class EventReminder {
+        +ObjectId _id
+        +ObjectId user
+        +String remindermsg
+        +Date date
+        +String event
+        +String occasion
+        +String time
+        +Boolean sent
+        +Date createdAt
+        +Date updatedAt
+    }
+
+    class Notification {
+        +ObjectId _id
+        +ObjectId user
+        +String title
+        +String message
+        +String type (order|system|promotion|reminder|gift)
+        +Boolean isRead
+        +ObjectId relatedId
+        +String relatedModel
+        +String priority (low|medium|high)
+        +String actionUrl
+        +Date createdAt
+        +Date updatedAt
+    }
+
+    class Feedback {
+        +ObjectId _id
+        +ObjectId user
+        +ObjectId product
+        +ObjectId order
+        +Number rating (1-5)
+        +String title
+        +String comment
+        +String[] images
+        +Boolean isVerifiedPurchase
+        +Number likes
+        +Number dislikes
+        +Boolean isEdited
+        +Date editedAt
+        +String status (active|hidden|reported)
+        +Date createdAt
+        +Date updatedAt
+        --
+        +virtual totalVotes(): Number
+        +virtual helpfulRatio(): Number
+        +static getAverageRating(productId): RatingStats
+        +canEdit(): Boolean
+    }
+
+    class Otp {
+        +ObjectId _id
+        +String email
+        +String otp
+        +Date createdAt (auto-expires in 5 minutes)
+    }
+
+}
+
+package "Controllers (Business Logic Layer)" {
+
+    class AuthController {
+        +registerUser(req, res)
+        +loginUser(req, res)
+        +logoutUser(req, res)
+        +forgotPassword(req, res)
+        +resetPassword(req, res)
+        +changePassword(req, res)
+        +getProfile(req, res)
+        +updateProfile(req, res)
+        +generateOTP(req, res)
+        +verifyOTP(req, res)
+        --
+        -generateToken(user): String
+    }
+
+    class ProductController {
+        +createProduct(req, res)
+        +getAllProducts(req, res)
+        +getProductById(req, res)
+        +updateProduct(req, res)
+        +deleteProduct(req, res)
+        +searchProducts(req, res)
+        +getProductsByCategory(req, res)
+        +getFeaturedProducts(req, res)
+        +updateProductStock(req, res)
+    }
+
+    class OrderController {
+        +createOrder(req, res)
+        +getUserOrderHistory(req, res)
+        +getOrderById(req, res)
+        +updateOrderStatus(req, res)
+        +getAllOrders(req, res)
+        +getOrdersByStatus(req, res)
+        +assignDeliveryStaff(req, res)
+        +updateDeliveryNotes(req, res)
+        +cancelOrder(req, res)
+        +getOrderSummary(req, res)
+    }
+
+    class CollaborativePurchaseController {
+        +createCollaborativePurchase(req, res)
+        +getCollaborativePurchases(req, res)
+        +joinCollaborativePurchase(req, res)
+        +processPayment(req, res)
+        +updateStatus(req, res)
+        +cancelCollaborativePurchase(req, res)
+        +getCollaborativePurchaseById(req, res)
+    }
+
+    class CustomizationController {
+        +createCustomization(req, res)
+        +updateCustomization(req, res)
+        +getCustomization(req, res)
+        +deleteCustomization(req, res)
+        +generatePreview(req, res)
+        +getQuotes(req, res)
+        +uploadCustomImage(req, res)
+    }
+
+    class EventController {
+        +createEvent(req, res)
+        +getAllEvents(req, res)
+        +getEventById(req, res)
+        +updateEvent(req, res)
+        +deleteEvent(req, res)
+        +getFeaturedEvents(req, res)
+    }
+
+    class NotificationController {
+        +createNotification(req, res)
+        +getUserNotifications(req, res)
+        +markAsRead(req, res)
+        +deleteNotification(req, res)
+        +createOrderStatusNotification(userId, orderId, status)
+        +sendReminderNotification(reminderId)
+    }
+
+    class FeedbackController {
+        +createFeedback(req, res)
+        +getProductFeedbacks(req, res)
+        +getUserFeedbacks(req, res)
+        +updateFeedback(req, res)
+        +deleteFeedback(req, res)
+        +likeFeedback(req, res)
+        +dislikeFeedback(req, res)
+    }
+
+    class DeliveryController {
+        +getAssignedOrders(req, res)
+        +updateDeliveryStatus(req, res)
+        +markAsDelivered(req, res)
+        +getDeliveryHistory(req, res)
+    }
+
+    class CategoryController {
+        +createCategory(req, res)
+        +getAllCategories(req, res)
+        +getCategoryById(req, res)
+        +updateCategory(req, res)
+        +deleteCategory(req, res)
+    }
+
+    class SurpriseGiftController {
+        +createSurpriseGift(req, res)
+        +getSurpriseGifts(req, res)
+        +updateSurpriseGift(req, res)
+        +confirmSurpriseGift(req, res)
+        +processPayment(req, res)
+    }
+
+}
+
+package "Middleware (Security & Validation Layer)" {
+
+    class AuthMiddleware {
+        +isAuthenticated(req, res, next)
+        +authorizeRoles(...roles)
+    }
+
+    class ValidationMiddleware {
+        +validateProduct[]
+        +validateOrder[]
+        +validateUser[]
+        +validateEmail[]
+    }
+
+    class UploadMiddleware {
+        +uploadSingle(fieldName)
+        +uploadMultiple(fieldName, maxCount)
+        +fileFilter(req, file, cb)
+    }
+
+    class ErrorHandler {
+        +notFound(req, res, next)
+        +errorHandler(err, req, res, next)
+    }
+
+}
+
+package "Utils & Services" {
+
+    class EmailService {
+        +sendEmail(to, subject, text, html)
+        +sendOTP(email, otp)
+        +sendOrderConfirmation(order)
+        +sendReminderEmail(reminder)
+    }
+
+    class CloudinaryService {
+        +uploadImage(file)
+        +uploadMultipleImages(files)
+        +deleteImage(publicId)
+    }
+
+    class TokenGenerator {
+        +generateJWT(payload)
+        +verifyJWT(token)
+        +generateResetToken()
+    }
+
+}
+
+' Relationships
+User ||--o{ Order : "places"
+User ||--o{ EventReminder : "sets"
+User ||--o{ Notification : "receives"
+User ||--o{ Feedback : "writes"
+User ||--o{ CollaborativePurchase : "creates"
+User ||--o{ GiftContribution : "creates"
+User ||--o{ SurpriseGift : "orders"
+User ||--o{ Customization : "creates"
+
+Product ||--o{ OrderItem : "contains"
+Product ||--o{ Feedback : "receives"
+Product ||--o{ Customization : "for"
+Product }o--|| Category : "belongs to"
+
+Order ||--o{ OrderItem : "contains"
+Order ||--o{ StatusHistory : "tracks"
+Order ||--o{ Feedback : "generates"
+Order ||--o{ Customization : "includes"
+
+CollaborativePurchase }o--|| Product : "for"
+CollaborativePurchase ||--o{ Order : "creates"
+
+GiftContribution }o--|| Product : "for"
+
+EventReminder }o--|| Event : "reminds about"
+
+Customization }o--|| Product : "customizes"
+Customization }o--|| User : "created by"
+Customization }o--|| Order : "part of"
+
+' Controller Dependencies
+AuthController ..> User : "manages"
+AuthController ..> Otp : "uses"
+ProductController ..> Product : "manages"
+ProductController ..> Category : "uses"
+OrderController ..> Order : "manages"
+OrderController ..> Product : "uses"
+OrderController ..> Notification : "creates"
+CollaborativePurchaseController ..> CollaborativePurchase : "manages"
+CustomizationController ..> Customization : "manages"
+EventController ..> Event : "manages"
+NotificationController ..> Notification : "manages"
+FeedbackController ..> Feedback : "manages"
+
+' Middleware Dependencies
+AuthMiddleware ..> User : "authenticates"
+UploadMiddleware ..> CloudinaryService : "uses"
+
+@enduml

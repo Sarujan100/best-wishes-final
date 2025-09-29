@@ -97,7 +97,7 @@ const CollaborativePurchaseSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'completed', 'cancelled', 'expired', 'refunded'],
+    enum: ['pending', 'completed', 'cancelled', 'expired', 'refunded', 'packing', 'outfordelivery', 'delivered'],
     default: 'pending',
   },
   createdAt: {
@@ -117,6 +117,10 @@ const CollaborativePurchaseSchema = new mongoose.Schema({
   orderId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order',
+  },
+  deliveryStaffId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
   },
   notifications: [{
     type: mongoose.Schema.Types.ObjectId,

@@ -1,6 +1,7 @@
 const CollaborativePurchase = require('../models/CollaborativePurchase');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const OrderSummary = require('../models/OrderSummary');
 const mongoose = require('mongoose');
 const { sendEmail } = require('../config/emailConfig');
 const crypto = require('crypto');
@@ -298,7 +299,7 @@ const processPayment = async (req, res) => {
       return res.status(400).json({ message: 'Payment already processed' });
     }
 
-    if (collaborativePurchase.status !== 'Processing') {
+    if (collaborativePurchase.status !== 'pending' && collaborativePurchase.status !== 'completed') {
       return res.status(400).json({ message: 'Collaborative purchase is no longer active' });
     }
 
@@ -320,7 +321,9 @@ const processPayment = async (req, res) => {
     if (allPaid) {
       // Create the actual order
       const order = await createOrderFromCollaborativePurchase(collaborativePurchase);
-      collaborativePurchase.status = 'completed';
+
+      collaborativePurchase.status = 'completed'; // Mark as completed, ready for admin to move to packing
+
       collaborativePurchase.completedAt = new Date();
       collaborativePurchase.orderId = order._id;
       
@@ -351,7 +354,7 @@ const declineParticipation = async (req, res) => {
 
     const collaborativePurchase = await CollaborativePurchase.findOne({
       'participants.paymentLink': paymentLink
-    });
+    }).populate('createdBy', 'email firstName lastName');
 
     if (!collaborativePurchase) {
       return res.status(404).json({ message: 'Collaborative purchase not found' });
@@ -412,7 +415,7 @@ const cancelCollaborativePurchase = async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const collaborativePurchase = await CollaborativePurchase.findById(id);
+    const collaborativePurchase = await CollaborativePurchase.findById(id).populate('createdBy', 'email firstName lastName');
     if (!collaborativePurchase) {
       return res.status(404).json({ message: 'Collaborative purchase not found' });
     }
@@ -421,7 +424,7 @@ const cancelCollaborativePurchase = async (req, res) => {
       return res.status(403).json({ message: 'Only the creator can cancel this collaborative purchase' });
     }
 
-    if (collaborativePurchase.status !== 'Processing') {
+    if (collaborativePurchase.status !== 'pending' && collaborativePurchase.status !== 'completed') {
       return res.status(400).json({ message: 'Cannot cancel completed or already cancelled purchase' });
     }
 
@@ -454,25 +457,45 @@ const generatePaymentLink = () => {
 };
 
 const createOrderFromCollaborativePurchase = async (collaborativePurchase) => {
+  // Prepare items based on whether it's multi-product or single product
+  let orderItems = [];
+  let subtotal = 0;
+  
+  if (collaborativePurchase.isMultiProduct && collaborativePurchase.products && collaborativePurchase.products.length > 0) {
+    // Multi-product collaborative purchase
+    orderItems = collaborativePurchase.products.map(item => {
+      const itemTotal = item.productPrice * item.quantity;
+      subtotal += itemTotal;
+      return {
+        product: item.product,
+        name: item.productName,
+        price: item.productPrice,
+        quantity: item.quantity,
+        image: item.image
+      };
+    });
+  } else {
+    // Single product collaborative purchase
+    subtotal = collaborativePurchase.productPrice * collaborativePurchase.quantity;
+    orderItems = [{
+      product: collaborativePurchase.product,
+      name: collaborativePurchase.productName,
+      price: collaborativePurchase.productPrice,
+      quantity: collaborativePurchase.quantity
+    }];
+  }
+  
+  const shippingCost = 10; // Default shipping cost
+  const total = subtotal + shippingCost;
+  
   const order = await Order.create({
     user: collaborativePurchase.createdBy,
-    items: [{
-      product: collaborativePurchase.product,
-      quantity: collaborativePurchase.quantity,
-      price: collaborativePurchase.productPrice
-    }],
-    totalAmount: collaborativePurchase.totalAmount,
-    status: 'confirmed',
-    paymentStatus: 'paid',
-    shippingAddress: {
-      // You might want to collect this from the creator
-      street: 'Default Address',
-      city: 'Default City',
-      state: 'Default State',
-      zipCode: '00000',
-      country: 'Default Country'
-    },
-    collaborativePurchase: collaborativePurchase._id
+    items: orderItems,
+    subtotal: subtotal,
+    shippingCost: shippingCost,
+    total: total,
+    status: 'Processing', // Use correct enum value
+    // Remove invalid fields that don't exist in Order model
   });
 
   return order;
@@ -636,11 +659,17 @@ const sendCreatorConfirmationEmail = async (email, data) => {
 };
 
 const sendCompletionNotifications = async (collaborativePurchase, order) => {
-  // Send completion email to all participants
-  const allEmails = [
-    collaborativePurchase.createdBy.email,
-    ...collaborativePurchase.participants.map(p => p.email)
-  ];
+  try {
+    // Send completion email to all participants
+    const creatorEmail = collaborativePurchase.createdBy?.email;
+    const participantEmails = collaborativePurchase.participants.map(p => p.email).filter(email => email);
+    
+    const allEmails = creatorEmail ? [creatorEmail, ...participantEmails] : participantEmails;
+    
+    if (allEmails.length === 0) {
+      console.error('No valid email addresses found for completion notifications');
+      return;
+    }
 
   for (const email of allEmails) {
     await sendEmail({
@@ -681,16 +710,25 @@ const sendCompletionNotifications = async (collaborativePurchase, order) => {
       `
     });
   }
+  } catch (error) {
+    console.error('Error sending completion notifications:', error);
+  }
 };
 
 const sendCancellationNotifications = async (collaborativePurchase) => {
-  // Send cancellation email to all participants
-  const allEmails = [
-    collaborativePurchase.createdBy.email,
-    ...collaborativePurchase.participants.map(p => p.email)
-  ];
+  try {
+    // Send cancellation email to all participants
+    const creatorEmail = collaborativePurchase.createdBy?.email;
+    const participantEmails = collaborativePurchase.participants.map(p => p.email).filter(email => email);
+    
+    const allEmails = creatorEmail ? [creatorEmail, ...participantEmails] : participantEmails;
+    
+    if (allEmails.length === 0) {
+      console.error('No valid email addresses found for cancellation notifications');
+      return;
+    }
 
-  for (const email of allEmails) {
+    for (const email of allEmails) {
     await sendEmail({
       to: email,
       subject: `❌ Collaborative Purchase Cancelled`,
@@ -728,6 +766,9 @@ const sendCancellationNotifications = async (collaborativePurchase) => {
       `
     });
   }
+  } catch (error) {
+    console.error('Error sending cancellation notifications:', error);
+  }
 };
 
 const processRefunds = async (collaborativePurchase) => {
@@ -744,6 +785,734 @@ const processRefunds = async (collaborativePurchase) => {
   await collaborativePurchase.save();
 };
 
+// Get all collaborative purchases for admin management
+const getAllCollaborativePurchases = async (req, res) => {
+  try {
+    const collaborativePurchases = await CollaborativePurchase.find({
+      status: { $in: ['Processing', 'pending', 'completed', 'packing', 'outfordelivery', 'delivered', 'cancelled', 'refunded'] }
+    })
+    .populate('createdBy', 'firstName lastName email phone')
+    .populate('products.product', 'name sku costPrice retailPrice salePrice stock')
+    .populate('product', 'name sku costPrice retailPrice salePrice stock')
+    .sort({ createdAt: -1 });
+
+    // Transform data to match frontend expectations
+    const transformedPurchases = collaborativePurchases.map(purchase => {
+      const items = [];
+      
+      if (purchase.isMultiProduct && purchase.products && purchase.products.length > 0) {
+        // Multi-product purchase
+        items.push(...purchase.products.map(prod => ({
+          productId: prod.product._id,
+          name: prod.productName,
+          price: prod.productPrice,
+          quantity: prod.quantity,
+          image: prod.product?.images?.[0]?.url || prod.image || '',
+          stock: prod.product?.stock || 0,
+          costPrice: prod.product?.costPrice || 0,
+          retailPrice: prod.product?.retailPrice || 0,
+          salePrice: prod.product?.salePrice || 0,
+          sku: prod.product?.sku || ''
+        })));
+      } else if (purchase.product) {
+        // Single product purchase
+        items.push({
+          productId: purchase.product._id,
+          name: purchase.productName,
+          price: purchase.productPrice,
+          quantity: purchase.quantity,
+          image: purchase.product.images?.[0]?.url || '',
+          stock: purchase.product?.stock || 0,
+          costPrice: purchase.product?.costPrice || 0,
+          retailPrice: purchase.product?.retailPrice || 0,
+          salePrice: purchase.product?.salePrice || 0,
+          sku: purchase.product?.sku || ''
+        });
+      }
+
+      return {
+        _id: purchase._id,
+        user: purchase.createdBy,
+        recipientName: `Collaborative Gift (${purchase.participants.length} participants)`,
+        recipientPhone: purchase.createdBy?.phone || 'N/A',
+        shippingAddress: 'Collaborative Purchase - Multiple Recipients',
+        total: purchase.totalAmount,
+        status: purchase.status,
+        createdAt: purchase.createdAt,
+        items: items,
+        participants: purchase.participants,
+        isCollaborative: true
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: transformedPurchases
+    });
+
+  } catch (error) {
+    console.error('Error fetching collaborative purchases:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching collaborative purchases',
+      error: error.message
+    });
+  }
+};
+
+// Start packing process for collaborative purchase
+const startPacking = async (req, res) => {
+  const session = await mongoose.startSession();
+  
+  try {
+    await session.startTransaction();
+    
+    const { id } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid collaborative purchase ID'
+      });
+    }
+
+    // Find the collaborative purchase
+    const collaborativePurchase = await CollaborativePurchase.findById(id)
+      .populate('products.product')
+      .populate('product')
+      .session(session);
+
+    if (!collaborativePurchase) {
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        message: 'Collaborative purchase not found'
+      });
+    }
+
+
+    // Check if all participants have paid
+    const allParticipantsPaid = collaborativePurchase.participants.every(p => p.paymentStatus === 'paid');
+    if (!allParticipantsPaid) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot start packing. Not all participants have paid for this collaborative purchase.'
+      });
+    }
+
+    // Check if status is pending or completed (ready for packing)
+    if (collaborativePurchase.status !== 'pending' && collaborativePurchase.status !== 'completed') {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message: `Cannot start packing. Current status: ${collaborativePurchase.status}. Order must be in 'pending' or 'completed' status with all participants paid.`
+      });
+    }
+
+    // Prepare items to process
+    const itemsToProcess = [];
+    
+    if (collaborativePurchase.isMultiProduct && collaborativePurchase.products && collaborativePurchase.products.length > 0) {
+      // Multi-product purchase
+      for (const productItem of collaborativePurchase.products) {
+        if (!productItem.product) {
+          await session.abortTransaction();
+          return res.status(404).json({
+            success: false,
+            message: `Product not found for item: ${productItem.productName}`
+          });
+        }
+        
+        itemsToProcess.push({
+          productId: productItem.product._id,
+          productName: productItem.productName,
+          quantity: productItem.quantity,
+          productData: productItem.product,
+          price: productItem.productPrice
+        });
+      }
+    } else if (collaborativePurchase.product) {
+      // Single product purchase
+      itemsToProcess.push({
+        productId: collaborativePurchase.product._id,
+        productName: collaborativePurchase.productName,
+        quantity: collaborativePurchase.quantity,
+        productData: collaborativePurchase.product,
+        price: collaborativePurchase.productPrice
+      });
+    }
+
+    // Check stock availability for all products
+    for (const item of itemsToProcess) {
+      const currentStock = item.productData.stock || 0;
+      if (currentStock < item.quantity) {
+        await session.abortTransaction();
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient stock for product: ${item.productName}. Available: ${currentStock}, Required: ${item.quantity}`
+        });
+      }
+    }
+
+    // Process each item: reduce stock and create order summary
+    for (const item of itemsToProcess) {
+      // Reduce stock
+      await Product.findByIdAndUpdate(
+        item.productId,
+        { $inc: { stock: -item.quantity } },
+        { session }
+      );
+
+      // Calculate profit
+      const costPrice = item.productData.costPrice || 0;
+      const salePrice = item.productData.salePrice || item.price;
+      const profit = salePrice - costPrice;
+      const totalProfit = profit * item.quantity;
+
+      // Create order summary entry
+      const orderSummary = new OrderSummary({
+        giftId: collaborativePurchase._id,
+        productSKU: item.productData.sku || 'N/A',
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        costPrice: costPrice,
+        retailPrice: item.productData.retailPrice || item.price,
+        salePrice: salePrice,
+        profit: profit,
+        totalProfit: totalProfit,
+        orderDate: new Date(),
+        status: 'collaborative'
+      });
+
+      await orderSummary.save({ session });
+    }
+
+    // Update collaborative purchase status to packing
+    collaborativePurchase.status = 'packing';
+    await collaborativePurchase.save({ session });
+
+    await session.commitTransaction();
+
+    res.status(200).json({
+      success: true,
+      message: 'Collaborative purchase moved to packing successfully',
+      data: {
+        collaborativePurchaseId: collaborativePurchase._id,
+        status: 'packing',
+        itemsProcessed: itemsToProcess.length
+      }
+    });
+
+  } catch (error) {
+    await session.abortTransaction();
+    console.error('Error starting packing process:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error processing packing request',
+      error: error.message
+    });
+  } finally {
+    session.endSession();
+  }
+};
+
+// Update collaborative purchase status
+const updateCollaborativeStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, scheduledAt } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid collaborative purchase ID'
+      });
+    }
+
+    // Map frontend status to backend status
+    const statusMapping = {
+      'Pending': 'pending',
+
+      'Completed': 'completed',
+
+      'Packing': 'packing', 
+      'OutForDelivery': 'outfordelivery',
+      'Delivered': 'delivered',
+      'Cancelled': 'cancelled'
+    };
+
+    const backendStatus = statusMapping[status] || status.toLowerCase();
+
+    const validStatuses = ['pending', 'completed', 'packing', 'outfordelivery', 'delivered', 'cancelled'];
+
+    
+    if (!validStatuses.includes(backendStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Valid statuses are: ' + Object.keys(statusMapping).join(', ')
+      });
+    }
+
+    const collaborativePurchase = await CollaborativePurchase.findById(id);
+
+    if (!collaborativePurchase) {
+      return res.status(404).json({
+        success: false,
+        message: 'Collaborative purchase not found'
+      });
+    }
+
+    // Update status
+    collaborativePurchase.status = backendStatus;
+    
+    if (scheduledAt) {
+      collaborativePurchase.scheduledAt = scheduledAt;
+    }
+
+    if (backendStatus === 'delivered') {
+      collaborativePurchase.completedAt = new Date();
+    }
+
+    await collaborativePurchase.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Collaborative purchase status updated successfully',
+      data: {
+        collaborativePurchaseId: collaborativePurchase._id,
+        status: collaborativePurchase.status,
+        scheduledAt: collaborativePurchase.scheduledAt,
+        completedAt: collaborativePurchase.completedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating collaborative purchase status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating status',
+      error: error.message
+    });
+  }
+};
+
+const printAllDeliveredCollaborativePurchases = async (req, res) => {
+  try {
+    const { fromDate, toDate } = req.query;
+
+    // Build query for delivered collaborative purchases
+    let query = { status: 'delivered' };
+
+    // Apply date filters if provided
+    if (fromDate || toDate) {
+      query.createdAt = {};
+      if (fromDate) {
+        query.createdAt.$gte = new Date(fromDate);
+      }
+      if (toDate) {
+        query.createdAt.$lte = new Date(toDate);
+      }
+    } else {
+      // Default: last 2 weeks
+      const twoWeeksAgo = new Date();
+      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+      query.createdAt = { $gte: twoWeeksAgo };
+    }
+
+    const collaborativePurchases = await CollaborativePurchase.find(query)
+      .populate('createdBy', 'firstName lastName email phone address')
+      .populate('products.product', 'name sku')
+      .populate('product', 'name sku')
+      .sort({ createdAt: -1 });
+
+    // Format collaborative purchases for printing
+    const printData = collaborativePurchases.map(purchase => {
+      const items = [];
+
+      if (purchase.isMultiProduct && purchase.products && purchase.products.length > 0) {
+        // Multi-product purchase
+        items.push(...purchase.products.map(prod => ({
+          name: prod.productName,
+          sku: prod.product?.sku || prod.product?._id?.toString().slice(-6) || 'N/A',
+          quantity: prod.quantity,
+          price: prod.productPrice,
+          subtotal: prod.productPrice * prod.quantity
+        })));
+      } else if (purchase.product) {
+        // Single product purchase
+        items.push({
+          name: purchase.productName,
+          sku: purchase.product?.sku || purchase.product?._id?.toString().slice(-6) || 'N/A',
+          quantity: purchase.quantity,
+          price: purchase.productPrice,
+          subtotal: purchase.productPrice * purchase.quantity
+        });
+      }
+
+      return {
+        orderId: purchase._id.toString().slice(-8).toUpperCase(),
+        orderDate: purchase.createdAt,
+        status: purchase.status === 'delivered' ? 'Delivered' : purchase.status,
+
+        sender: {
+          name: `${purchase.createdBy.firstName} ${purchase.createdBy.lastName}`,
+          email: purchase.createdBy.email,
+          phone: purchase.createdBy.phone || 'N/A',
+          address: purchase.createdBy.address || 'Address not provided'
+        },
+
+        receiver: {
+          name: `Collaborative Gift (${purchase.participants.length} participants)`,
+          phone: purchase.createdBy.phone || 'N/A',
+          address: 'Multiple Recipients - Collaborative Purchase'
+        },
+
+        orderDetails: {
+          items: items,
+          total: purchase.totalAmount,
+          participants: purchase.participants.length,
+          shareAmount: purchase.shareAmount
+        },
+
+        delivery: {
+          deliveryStaff: 'N/A', // Can be populated if you have delivery staff info
+          deliveryStaffPhone: 'N/A',
+          packedAt: purchase.packedAt,
+          deliveredAt: purchase.deliveredAt
+        }
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Print data for all delivered collaborative purchases retrieved successfully',
+      data: {
+        orders: printData,
+        totalOrders: printData.length,
+        printedAt: new Date(),
+        printedBy: req.user ? `${req.user.firstName} ${req.user.lastName}` : 'System',
+        dateRange: {
+          from: fromDate || 'N/A',
+          to: toDate || 'N/A'
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in printAllDeliveredCollaborativePurchases:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve print data for delivered collaborative purchases',
+      error: error.message
+    });
+  }
+};
+
+// Print collaborative purchase details (individual)
+const printCollaborativePurchaseDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const collaborativePurchase = await CollaborativePurchase.findById(id)
+      .populate('createdBy', 'firstName lastName email phone address')
+      .populate('products.product', 'name sku images')
+      .populate('product', 'name sku images');
+
+    if (!collaborativePurchase) {
+      return res.status(404).json({
+        success: false,
+        message: 'Collaborative purchase not found'
+      });
+    }
+
+    // Format items for printing
+    const items = [];
+
+    if (collaborativePurchase.isMultiProduct && collaborativePurchase.products && collaborativePurchase.products.length > 0) {
+      // Multi-product purchase
+      items.push(...collaborativePurchase.products.map(prod => ({
+        name: prod.productName,
+        sku: prod.product?.sku || prod.product?._id?.toString().slice(-6) || 'N/A',
+        quantity: prod.quantity,
+        price: prod.productPrice,
+        subtotal: prod.productPrice * prod.quantity,
+        image: prod.product?.images?.[0]?.url || '/placeholder.svg'
+      })));
+    } else if (collaborativePurchase.product) {
+      // Single product purchase
+      items.push({
+        name: collaborativePurchase.productName,
+        sku: collaborativePurchase.product?.sku || collaborativePurchase.product?._id?.toString().slice(-6) || 'N/A',
+        quantity: collaborativePurchase.quantity,
+        price: collaborativePurchase.productPrice,
+        subtotal: collaborativePurchase.productPrice * collaborativePurchase.quantity,
+        image: collaborativePurchase.product?.images?.[0]?.url || '/placeholder.svg'
+      });
+    }
+
+    // Format data for printing
+    const printData = {
+      orderId: collaborativePurchase._id.toString().slice(-8).toUpperCase(),
+      orderDate: collaborativePurchase.createdAt,
+      status: collaborativePurchase.status,
+
+      // Sender Details (Creator)
+      sender: {
+        name: `${collaborativePurchase.createdBy.firstName} ${collaborativePurchase.createdBy.lastName}`,
+        email: collaborativePurchase.createdBy.email,
+        phone: collaborativePurchase.createdBy.phone || 'N/A',
+        address: collaborativePurchase.createdBy.address || 'Address not provided'
+      },
+
+      // Receiver Details (Collaborative)
+      receiver: {
+        name: `Collaborative Gift (${collaborativePurchase.participants.length} participants)`,
+        phone: collaborativePurchase.createdBy.phone || 'N/A',
+        address: 'Multiple Recipients - Collaborative Purchase'
+      },
+
+      // Order Details
+      orderDetails: {
+        costume: collaborativePurchase.costume || 'None',
+        suggestions: collaborativePurchase.suggestions || 'None',
+        scheduledAt: collaborativePurchase.scheduledAt,
+        total: collaborativePurchase.totalAmount,
+        shareAmount: collaborativePurchase.shareAmount,
+        participants: collaborativePurchase.participants.length,
+        items: items
+      },
+
+      // Participants payment status
+      participants: collaborativePurchase.participants.map(p => ({
+        email: p.email,
+        paymentStatus: p.paymentStatus,
+        amount: collaborativePurchase.shareAmount
+      })),
+
+      // Delivery Details
+      delivery: {
+        deliveryStaff: 'Not assigned', // Can be populated if you have delivery staff info
+        deliveryStaffPhone: 'N/A',
+        deliveredAt: collaborativePurchase.deliveredAt,
+        packedAt: collaborativePurchase.packedAt
+      },
+
+      // Print metadata
+      printedAt: new Date(),
+      printedBy: req.user ? `${req.user.firstName} ${req.user.lastName}` : 'System'
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Print data retrieved successfully',
+      data: printData
+    });
+
+  } catch (error) {
+    console.error('Error in printCollaborativePurchaseDetails:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve print data',
+      error: error.message
+    });
+  }
+};
+
+// Get collaborative purchases for delivery staff
+const getDeliveryCollaborativePurchases = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status, query } = req.query;
+
+    console.log('getDeliveryCollaborativePurchases called with:', { page, limit, status, query });
+
+    // Build match criteria for delivery-ready collaborative purchases
+    let matchCriteria = {}; // Temporarily remove status filter to debug
+
+    // If a specific status is requested and it matches our delivery status
+    if (status && status === 'outfordelivery') {
+      matchCriteria.status = status;
+    } else {
+      // Default to outfordelivery if no status specified
+      matchCriteria.status = 'outfordelivery';
+    }
+
+    console.log('Match criteria:', matchCriteria);
+
+    // Add search functionality
+    if (query) {
+      matchCriteria.$or = [
+        { 'createdBy.firstName': { $regex: query, $options: 'i' } },
+        { 'createdBy.lastName': { $regex: query, $options: 'i' } },
+        { 'createdBy.email': { $regex: query, $options: 'i' } }
+      ];
+    }
+
+    const collaborativePurchases = await CollaborativePurchase.find(matchCriteria)
+      .populate('createdBy', 'firstName lastName email phone address')
+      .populate('products.product', 'name images salePrice retailPrice')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .exec();
+
+    console.log('Found collaborative purchases:', collaborativePurchases.length);
+
+    const total = await CollaborativePurchase.countDocuments(matchCriteria);
+
+    console.log('Total count:', total);
+
+    res.status(200).json({
+      success: true,
+      collaborativeGifts: collaborativePurchases,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        limit: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching delivery collaborative purchases:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get delivery stats for collaborative purchases
+const getDeliveryStats = async (req, res) => {
+  try {
+    console.log('getDeliveryStats called for collaborative purchases');
+
+    const stats = {
+      total: 0,
+      pending: 0,
+      outForDelivery: 0,
+      delivered: 0
+    };
+
+    // Count collaborative purchases by status
+    const statusCounts = await CollaborativePurchase.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    console.log('Status counts:', statusCounts);
+
+    // Process the counts
+    statusCounts.forEach(statusCount => {
+      switch (statusCount._id) {
+        case 'outfordelivery':
+          stats.outForDelivery = statusCount.count;
+          stats.total += statusCount.count;
+          break;
+        case 'delivered':
+          stats.delivered = statusCount.count;
+          stats.total += statusCount.count;
+          break;
+        case 'pending':
+        case 'processing':
+          stats.pending += statusCount.count;
+          stats.total += statusCount.count;
+          break;
+        default:
+          stats.total += statusCount.count;
+      }
+    });
+
+    console.log('Final stats:', stats);
+
+    res.status(200).json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.error('Error fetching delivery stats for collaborative purchases:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Update delivery status for collaborative purchases
+const updateDeliveryStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, notes, deliveryStaffId } = req.body;
+
+    console.log('updateDeliveryStatus called:', { id, status, notes, deliveryStaffId });
+
+    // Validate status - delivery staff can only update to 'delivered'
+    if (status !== 'delivered') {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery staff can only mark orders as delivered'
+      });
+    }
+
+    const collaborativePurchase = await CollaborativePurchase.findById(id);
+
+    if (!collaborativePurchase) {
+      return res.status(404).json({
+        success: false,
+        message: 'Collaborative purchase not found'
+      });
+    }
+
+    // Check if the current status allows delivery update
+    if (!['outfordelivery', 'shipped'].includes(collaborativePurchase.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order status does not allow delivery update'
+      });
+    }
+
+    // Update the status and delivery staff ID
+    collaborativePurchase.status = status;
+    collaborativePurchase.deliveryStaffId = deliveryStaffId || req.user._id;
+    collaborativePurchase.deliveredAt = new Date();
+
+    // Add status history
+    if (!collaborativePurchase.statusHistory) {
+      collaborativePurchase.statusHistory = [];
+    }
+
+    collaborativePurchase.statusHistory.push({
+      status: status,
+      updatedAt: new Date(),
+      updatedBy: req.user._id,
+      notes: notes || 'Marked as delivered by delivery staff'
+    });
+
+    await collaborativePurchase.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Collaborative purchase status updated successfully',
+      collaborativePurchase
+    });
+
+  } catch (error) {
+    console.error('Error updating delivery status for collaborative purchase:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createCollaborativePurchase,
   getCollaborativePurchase,
@@ -752,4 +1521,12 @@ module.exports = {
   declineParticipation,
   getUserCollaborativePurchases,
   cancelCollaborativePurchase,
+  getAllCollaborativePurchases,
+  startPacking,
+  updateCollaborativeStatus,
+  printAllDeliveredCollaborativePurchases,
+  printCollaborativePurchaseDetails,
+  getDeliveryCollaborativePurchases,
+  getDeliveryStats,
+  updateDeliveryStatus,
 };

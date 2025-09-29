@@ -18,13 +18,18 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const heroSectionRoutes = require('./routes/heroSectionRoutes');
 const eventManagementRoutes = require('./routes/eventManagementRoutes');
 const userRoutes = require('./routes/userRoutes');
+const adminCreateUserRoutes = require('./routes/adminCreateUserRoutes');
 const collaborativePurchaseRoutes = require('./routes/collaborativePurchaseRoutes');
 const diagnosticRoutes = require('./routes/diagnosticRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const customizationRoutes = require('./routes/customizationRoutes');
+const testRoutes = require('./routes/testRoutes');
 
 const orderSummaryRoutes = require('./routes/orderSummaryRoutes');
 
 const reportRoutes = require('./routes/reportRoutes');
+const aiChatbotRoutes = require('./routes/aiChatbotRoutes');
+const feedbackRoutes = require('./routes/feedbackRoutes');
 
 
 
@@ -64,12 +69,17 @@ app.use('/api', heroSectionRoutes);
 app.use('/api/events', eventManagementRoutes);
 app.use('/api/collaborative-purchases', collaborativePurchaseRoutes);
 app.use('/api', userRoutes);
+app.use('/api', adminCreateUserRoutes);
 app.use('/api/diagnostic', diagnosticRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/customizations', customizationRoutes);
+app.use('/api/test', testRoutes);
 
 app.use('/api/order-summary', orderSummaryRoutes);
 
 app.use('/api', reportRoutes);
+app.use('/api/chatbot', aiChatbotRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 
 
