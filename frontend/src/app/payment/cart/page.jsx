@@ -40,7 +40,7 @@ function PaymentForm({ clientSecret, amount, currency, lineItems, onSuccess }) {
                 toast.error(result.error.message || "Payment failed");
             } else if (result.paymentIntent && result.paymentIntent.status === "succeeded") {
                 try {
-                    await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
+                    await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders/create`, {
                         items: lineItems,
                         total: amount,
                         status: 'Processing',
